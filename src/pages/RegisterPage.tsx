@@ -1,0 +1,105 @@
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import { AuthLayout } from "@/components/layout/AuthLayout";
+import {
+  Input,
+  Button,
+  Divider,
+  OAuthButton,
+} from "@/components/ui/FormElements";
+import { registerApi, getOAuthUrl } from "@/lib/api";
+import type { ApiError } from "@/lib/api";
+import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
+
+export function RegisterPage() {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState<{ email?: string }>({});
+
+  const validate = () => {
+    const e: typeof errors = {};
+    if (!email) e.email = "Email is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      e.email = "Invalid email address";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
+
+    setIsLoading(true);
+    try {
+      await registerApi(email);
+      toast.success("OTP sent to your email");
+      navigate("/verify-otp", { state: { email, flow: "register" } });
+    } catch (err) {
+      const apiErr = err as ApiError;
+      if (apiErr.statusCode === 409) {
+        toast.error(apiErr.message);
+      } else {
+        toast.error(apiErr.message || "Registration failed");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOAuth = (provider: "google" | "github" | "microsoft") => {
+    window.location.href = getOAuthUrl(provider);
+  };
+
+  return (
+    <AuthLayout>
+      <div className="space-y-1 text-center">
+        <h2 className="font-heading text-2xl font-semibold text-[var(--foreground)]">
+          Create your account
+        </h2>
+        <p className="text-sm text-[var(--muted-foreground)]">
+          Enter your email to get started
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <Input
+          id="email"
+          label="Email"
+          type="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          error={errors.email}
+          autoComplete="email"
+        />
+
+        <Button type="submit" className="w-full" isLoading={isLoading}>
+          Continue
+        </Button>
+      </form>
+
+      <Divider text="or continue with" />
+
+      <div className="grid grid-cols-3 gap-3">
+        <OAuthButton provider="google" onClick={() => handleOAuth("google")} />
+        <OAuthButton provider="github" onClick={() => handleOAuth("github")} />
+        <OAuthButton
+          provider="microsoft"
+          onClick={() => handleOAuth("microsoft")}
+        />
+      </div>
+
+      <p className="mt-6 text-center text-sm text-[var(--muted-foreground)]">
+        Already have an account?{" "}
+        <Link
+          to="/login"
+          className="font-medium text-[var(--primary)] hover:underline"
+        >
+          Sign in
+        </Link>
+      </p>
+    </AuthLayout>
+  );
+}

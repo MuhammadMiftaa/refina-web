@@ -1,0 +1,80 @@
+import React, { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { AuthLayout } from "@/components/layout/AuthLayout";
+import { Input, Button } from "@/components/ui/FormElements";
+import { requestSetPasswordApi } from "@/lib/api";
+import type { ApiError } from "@/lib/api";
+import toast from "react-hot-toast";
+
+export function ForgotPasswordPage() {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState<{ email?: string }>({});
+
+  const validate = () => {
+    const e: typeof errors = {};
+    if (!email) e.email = "Email is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      e.email = "Invalid email address";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
+
+    setIsLoading(true);
+    try {
+      await requestSetPasswordApi(email);
+      toast.success("OTP sent to your email");
+      navigate("/verify-otp", { state: { email, flow: "forgot-password" } });
+    } catch (err) {
+      const apiErr = err as ApiError;
+      toast.error(apiErr.message || "Something went wrong");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <AuthLayout>
+      <div className="space-y-1 text-center">
+        <h2 className="font-heading text-2xl font-semibold text-[var(--foreground)]">
+          Reset your password
+        </h2>
+        <p className="text-sm text-[var(--muted-foreground)]">
+          Enter your email and we&apos;ll send you a verification code
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+        <Input
+          id="email"
+          label="Email"
+          type="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          error={errors.email}
+          autoComplete="email"
+        />
+
+        <Button type="submit" className="w-full" isLoading={isLoading}>
+          Send Code
+        </Button>
+      </form>
+
+      <p className="mt-6 text-center text-sm text-[var(--muted-foreground)]">
+        Remember your password?{" "}
+        <Link
+          to="/login"
+          className="font-medium text-[var(--primary)] hover:underline"
+        >
+          Sign in
+        </Link>
+      </p>
+    </AuthLayout>
+  );
+}

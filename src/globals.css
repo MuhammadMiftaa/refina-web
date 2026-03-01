@@ -1,0 +1,232 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ── Custom Theme ── */
+@theme {
+  --font-body: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-heading: "Cormorant", ui-serif, Georgia, serif;
+
+  --color-gold-50: #fff9e6;
+  --color-gold-100: #f5deb3;
+  --color-gold-200: #f0d08c;
+  --color-gold-300: #e8c36a;
+  --color-gold-400: #daa520;
+  --color-gold-500: #ffd700;
+  --color-gold-600: #c5961e;
+  --color-gold-700: #8b6914;
+  --color-gold-800: #8b4513;
+  --color-gold-900: #5c2d0a;
+
+  --color-dark: #0a0a0a;
+  --color-dark-100: #111111;
+  --color-dark-200: #1a1a1a;
+  --color-dark-300: #222222;
+  --color-dark-400: #2a2a2a;
+}
+
+:root {
+  --font-manrope: "Manrope", ui-sans-serif, system-ui, sans-serif;
+
+  /* ── Dark Mode (default) ── */
+  --background: #0a0a0a;
+  --foreground: #e5e5e5;
+
+  --card: #111111;
+  --card-foreground: #e5e5e5;
+
+  --popover: #111111;
+  --popover-foreground: #e5e5e5;
+
+  --primary: #daa520;
+  --primary-foreground: #0a0a0a;
+
+  --secondary: #1a1a1a;
+  --secondary-foreground: #e5e5e5;
+
+  --accent: #ffd700;
+  --accent-foreground: #0a0a0a;
+
+  --muted: #222222;
+  --muted-foreground: #737373;
+
+  --destructive: #dc2626;
+  --destructive-foreground: #fafafa;
+
+  --border: rgba(218, 165, 32, 0.15);
+  --input: #222222;
+  --ring: #daa520;
+
+  --radius: 0.625rem;
+}
+
+.light {
+  --background: #faf9f6;
+  --foreground: #1a1a1a;
+
+  --card: #ffffff;
+  --card-foreground: #1a1a1a;
+
+  --popover: #ffffff;
+  --popover-foreground: #1a1a1a;
+
+  --primary: #8b6914;
+  --primary-foreground: #fff9e6;
+
+  --secondary: #f5f0e8;
+  --secondary-foreground: #1a1a1a;
+
+  --accent: #daa520;
+  --accent-foreground: #0a0a0a;
+
+  --muted: #f0ebe3;
+  --muted-foreground: #6b6b6b;
+
+  --destructive: #dc2626;
+  --destructive-foreground: #fafafa;
+
+  --border: rgba(139, 105, 20, 0.2);
+  --input: #f0ebe3;
+  --ring: #8b6914;
+}
+
+/* ── Base Styles ── */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--font-body);
+    background-color: var(--background);
+    color: var(--foreground);
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+  }
+
+  ::selection {
+    background-color: rgba(218, 165, 32, 0.3);
+    color: #ffd700;
+  }
+}
+
+/* ── Utility Classes ── */
+@layer utilities {
+  .text-gold-gradient {
+    background: linear-gradient(
+      135deg,
+      #8b4513 0%,
+      #daa520 30%,
+      #ffd700 50%,
+      #f5deb3 70%,
+      #daa520 100%
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gold-shine {
+    background: linear-gradient(
+      90deg,
+      #daa520,
+      #ffd700,
+      #f5deb3,
+      #ffd700,
+      #daa520
+    );
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gold-shimmer 4s ease-in-out infinite;
+  }
+
+  .bg-gold-gradient {
+    background: linear-gradient(135deg, #8b4513, #daa520, #ffd700);
+  }
+
+  .bg-gold-btn {
+    background: linear-gradient(135deg, #8b4513 0%, #daa520 50%, #ffd700 100%);
+  }
+
+  .bg-gold-btn:hover {
+    background: linear-gradient(135deg, #daa520 0%, #ffd700 50%, #f5deb3 100%);
+  }
+
+  .border-gold {
+    border-color: rgba(218, 165, 32, 0.3);
+  }
+
+  .glow-gold {
+    box-shadow:
+      0 0 20px rgba(218, 165, 32, 0.1),
+      0 0 60px rgba(218, 165, 32, 0.03);
+  }
+
+  .gold-line {
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(218, 165, 32, 0.4),
+      transparent
+    );
+  }
+}
+
+/* ── Animations ── */
+@keyframes gold-shimmer {
+  0%,
+  100% {
+    background-position: 0% center;
+  }
+  50% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out forwards;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #8b4513, #daa520);
+  border-radius: 3px;
+}
+
+/* ── Focus ring ── */
+*:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}

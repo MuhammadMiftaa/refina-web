@@ -1,0 +1,31 @@
+# env
+.env
+.env.local
+.env.*.local
+
+# dependencies
+node_modules/
+
+# build
+dist/
+
+# editor
+.vscode/*
+!.vscode/extensions.json
+
+# os
+.DS_Store
+Thumbs.db
+
+# testing
+test-results/
+playwright-report/
+blob-report/
+
+# pwa
+dev-dist/
+
+dashboard-page/
+design-reference/
+directory-reference/
+refina-auth-backend/
