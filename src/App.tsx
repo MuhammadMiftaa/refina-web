@@ -5,6 +5,7 @@ import { VerifyOtpPage } from "./pages/VerifyOtpPage";
 import { CompleteProfilePage } from "./pages/CompleteProfilePage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { SetPasswordPage } from "./pages/SetPasswordPage";
+import { DashboardPage } from "./pages/DashboardPage";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
       <Route path="/complete-profile" element={<CompleteProfilePage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/set-password" element={<SetPasswordPage />} />
+      <Route path="/dashboard" element={<DashboardPage />} />
 
       {/* Default redirect to login */}
       <Route path="*" element={<Navigate to="/login" replace />} />
