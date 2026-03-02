@@ -74,11 +74,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // On mount, restore token from localStorage or URL hash (OAuth redirect)
   useEffect(() => {
-    // Check URL hash for OAuth token
+    // Check URL hash for OAuth token (#aurify_token=xxx)
     const hash = window.location.hash;
-    if (hash.includes("token=")) {
+    if (hash.includes("aurify_token=")) {
       const params = new URLSearchParams(hash.substring(1));
-      const hashToken = params.get("token");
+      const hashToken = params.get("aurify_token");
       if (hashToken) {
         processToken(hashToken);
         // Clean hash from URL

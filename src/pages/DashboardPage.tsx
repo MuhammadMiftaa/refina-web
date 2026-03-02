@@ -758,7 +758,7 @@ export function DashboardPage() {
                       strokeWidth={0}
                       paddingAngle={3}
                     >
-                      {netWorth.data.Slices.map((_, i) => (
+                      {netWorth.data.Slices?.map((_, i) => (
                         <Cell key={i} fill={CHART.pie[i] ?? CHART.gold} />
                       ))}
                     </Pie>
@@ -783,7 +783,7 @@ export function DashboardPage() {
                       {fmtShort(netWorth.data.Total)}
                     </div>
                   </div>
-                  {netWorth.data.Slices.map((s, i) => (
+                  {netWorth.data.Slices?.map((s, i) => (
                     <div key={i}>
                       <div className="mb-1 flex items-center justify-between">
                         <span className="flex items-center gap-1.5 text-[11px] text-(--muted-foreground)">
