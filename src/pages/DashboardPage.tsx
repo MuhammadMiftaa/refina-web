@@ -12,6 +12,7 @@ import {
   Legend,
   PieChart,
   Pie,
+  ReferenceLine,
 } from "recharts";
 import { Sun, Moon } from "lucide-react";
 import {
@@ -341,17 +342,6 @@ export function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Theme toggle — icon only */}
-          <button
-            onClick={toggleTheme}
-            title={
-              theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"
-            }
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-(--border) text-(--muted-foreground) transition hover:bg-(--muted) hover:text-(--foreground)"
-          >
-            {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
-          </button>
-
           <span className="mr-1 text-[10px] uppercase tracking-widest text-(--muted-foreground)">
             Filter
           </span>
@@ -388,6 +378,17 @@ export function DashboardPage() {
             }
             className="rounded-lg border border-(--border) bg-(--input) px-2.5 py-1.5 text-xs text-(--foreground) outline-none focus:border-(--ring)"
           />
+
+          {/* Theme toggle — icon only */}
+          <button
+            onClick={toggleTheme}
+            title={
+              theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"
+            }
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-(--border) text-(--muted-foreground) transition hover:bg-(--muted) hover:text-(--foreground)"
+          >
+            {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+          </button>
         </div>
       </header>
 
@@ -560,7 +561,7 @@ export function DashboardPage() {
           <Card>
             <SectionHeader
               title="Income vs Expense"
-              subtitle="Monthly comparison"
+              subtitle="Monthly profit / loss"
             />
             {financialSummary.loading ? (
               <SkeletonChart height={200} />
@@ -571,7 +572,7 @@ export function DashboardPage() {
                 <BarChart
                   data={incomeExpenseData}
                   barGap={2}
-                  margin={{ top: 0, right: 0, left: 0, bottom: 0 }}
+                  margin={{ top: 4, right: 0, left: 0, bottom: 0 }}
                 >
                   <CartesianGrid
                     strokeDasharray="3 3"
@@ -590,31 +591,90 @@ export function DashboardPage() {
                     axisLine={false}
                     tickLine={false}
                     width={42}
+                    domain={["auto", "auto"]}
                   />
-                  <Tooltip content={<ChartTooltip />} />
-                  <Bar
-                    dataKey="income"
-                    name="Income"
-                    fill={CHART.green}
-                    radius={[3, 3, 0, 0]}
-                    barSize={10}
-                    opacity={0.85}
-                  />
-                  <Bar
-                    dataKey="expense"
-                    name="Expense"
-                    fill={CHART.red}
-                    radius={[3, 3, 0, 0]}
-                    barSize={10}
-                    opacity={0.85}
+                  {/* Zero baseline */}
+                  <ReferenceLine y={0} stroke="var(--border)" strokeWidth={1} />
+                  <Tooltip
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload?.length) return null;
+                      const d = payload[0]?.payload as {
+                        income: number;
+                        expense: number;
+                        profit: number;
+                      };
+                      const isProfit = (d?.profit ?? 0) >= 0;
+                      return (
+                        <div className="rounded-lg border border-(--border) bg-(--card) px-3.5 py-2.5 text-xs shadow-lg">
+                          <div className="mb-1.5 font-semibold text-(--muted-foreground)">
+                            {label}
+                          </div>
+                          <div
+                            style={{ color: CHART.green }}
+                            className="mb-0.5"
+                          >
+                            Income: <strong>{fmtShort(d?.income ?? 0)}</strong>
+                          </div>
+                          <div style={{ color: CHART.red }} className="mb-0.5">
+                            Expense:{" "}
+                            <strong>{fmtShort(d?.expense ?? 0)}</strong>
+                          </div>
+                          <div
+                            style={{
+                              color: isProfit ? CHART.green : CHART.red,
+                            }}
+                            className="font-semibold"
+                          >
+                            {isProfit ? "Profit" : "Loss"}:{" "}
+                            <strong>
+                              {fmtShort(Math.abs(d?.profit ?? 0))}
+                            </strong>
+                          </div>
+                        </div>
+                      );
+                    }}
                   />
                   <Bar
                     dataKey="profit"
-                    name="Profit"
-                    fill={CHART.blue}
+                    name="Profit/Loss"
+                    barSize={14}
                     radius={[3, 3, 0, 0]}
-                    barSize={10}
-                    opacity={0.85}
+                    shape={(props: {
+                      x?: number;
+                      y?: number;
+                      width?: number;
+                      height?: number;
+                      value?: number | [number, number];
+                    }) => {
+                      let {
+                        x = 0,
+                        y = 0,
+                        width = 0,
+                        height = 0,
+                        value = 0,
+                      } = props;
+                      const numValue = Array.isArray(value)
+                        ? value[1] - value[0]
+                        : value;
+                      // For negative bars recharts gives negative height — normalise
+                      if (height < 0) {
+                        y += height;
+                        height = Math.abs(height);
+                      }
+                      const fill = numValue >= 0 ? CHART.green : CHART.red;
+                      return (
+                        <rect
+                          x={x}
+                          y={y}
+                          width={width}
+                          height={height}
+                          fill={fill}
+                          opacity={0.85}
+                          rx={3}
+                          ry={3}
+                        />
+                      );
+                    }}
                   />
                 </BarChart>
               </ResponsiveContainer>
