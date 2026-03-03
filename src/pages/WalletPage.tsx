@@ -495,7 +495,7 @@ export function WalletPage() {
   return (
     <MainLayout>
       {/* Header */}
-      <header className="sticky top-0 z-40 flex flex-col gap-3 border-b border-(--border) bg-(--card) px-4 py-3 sm:px-6 sm:py-3.5 md:flex-row md:items-center md:justify-between">
+      <header className="sticky top-0 z-40 flex gap-3 border-b border-(--border) bg-(--card) px-4 py-3 sm:px-6 sm:py-3.5 flex-row items-center justify-between">
         <div>
           <div className="text-sm font-bold tracking-wide text-(--foreground)">My Wallets</div>
           <div className="text-[10px] text-(--muted-foreground)">

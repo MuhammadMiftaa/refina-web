@@ -117,7 +117,7 @@ export function SkeletonNetWorth() {
 
 export function SkeletonInvestmentSummary() {
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div className="flex flex-col gap-3">
         {Array.from({ length: 5 }).map((_, i) => (
           <div

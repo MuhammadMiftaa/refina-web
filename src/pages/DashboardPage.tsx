@@ -28,6 +28,7 @@ import {
   fmtPct,
   snapshotLabel,
   healthColor,
+  fmtScaled,
 } from "@/lib/dashboard-helpers";
 import { cn } from "@/lib/utils";
 import type { FinancialSummary } from "@/types/dashboard";
@@ -332,16 +333,29 @@ export function DashboardPage() {
     <MainLayout>
       {/* ════════ HEADER — Sticky Global Filter ════════ */}
       <header className="sticky top-0 z-40 flex flex-col gap-3 border-b border-(--border) bg-(--card) px-4 py-3 sm:px-6 sm:py-3.5 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="text-sm font-bold tracking-wide text-(--foreground)">
-            Financial Dashboard
+        <div className="flex items-center justify-between sm:inline">
+          <div>
+            <div className="text-sm font-bold tracking-wide text-(--foreground)">
+              Financial Dashboard
+            </div>
+            <div className="text-[10px] text-(--muted-foreground)">
+              Overview of your financial health
+            </div>
           </div>
-          <div className="text-[10px] text-(--muted-foreground)">
-            Overview of your financial health
-          </div>
+
+          {/* Theme toggle — icon only */}
+          <button
+            onClick={toggleTheme}
+            title={
+              theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"
+            }
+            className="flex sm:hidden h-8 w-8 items-center justify-center rounded-lg border border-(--border) text-(--muted-foreground) transition hover:bg-(--muted) hover:text-(--foreground)"
+          >
+            {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+          </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <div className="inline-grid grid-flow-col auto-cols-max grid-rows-2 sm:grid-rows-1 items-center gap-2 sm:gap-3">
           <span className="mr-1 hidden text-[10px] uppercase tracking-widest text-(--muted-foreground) sm:inline">
             Filter
           </span>
@@ -350,7 +364,7 @@ export function DashboardPage() {
           <select
             value={walletID}
             onChange={(e) => setWalletID(e.target.value)}
-            className="min-w-0 flex-1 rounded-lg border border-(--border) bg-(--input) px-2.5 py-1.5 text-xs text-(--foreground) outline-none focus:border-(--ring) sm:flex-none"
+            className="row-start-2 col-start-1 sm:col-start-2 sm:row-start-1 min-w-0 w-full flex-1 rounded-lg border border-(--border) bg-(--input) px-2.5 py-1.5 text-xs text-(--foreground) outline-none focus:border-(--ring) sm:flex-none"
           >
             <option value="">All Wallets</option>
             {wallets.data?.map((w) => (
@@ -368,7 +382,7 @@ export function DashboardPage() {
               onChange={(e) =>
                 setDateRange((p) => ({ ...p, start: e.target.value }))
               }
-              className="w-[120px] rounded-lg border border-(--border) bg-(--input) px-2 py-1.5 text-xs text-(--foreground) outline-none focus:border-(--ring) sm:w-auto sm:px-2.5"
+              className="w-30 rounded-lg border border-(--border) bg-(--input) px-2 py-1.5 text-xs text-(--foreground) outline-none focus:border-(--ring) sm:w-auto sm:px-2.5"
             />
             <span className="text-xs text-(--muted-foreground)">→</span>
             <input
@@ -377,7 +391,7 @@ export function DashboardPage() {
               onChange={(e) =>
                 setDateRange((p) => ({ ...p, end: e.target.value }))
               }
-              className="w-[120px] rounded-lg border border-(--border) bg-(--input) px-2 py-1.5 text-xs text-(--foreground) outline-none focus:border-(--ring) sm:w-auto sm:px-2.5"
+              className="w-30 rounded-lg border border-(--border) bg-(--input) px-2 py-1.5 text-xs text-(--foreground) outline-none focus:border-(--ring) sm:w-auto sm:px-2.5"
             />
           </div>
 
@@ -387,7 +401,7 @@ export function DashboardPage() {
             title={
               theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"
             }
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-(--border) text-(--muted-foreground) transition hover:bg-(--muted) hover:text-(--foreground)"
+            className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg border border-(--border) text-(--muted-foreground) transition hover:bg-(--muted) hover:text-(--foreground)"
           >
             {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
           </button>
@@ -743,7 +757,7 @@ export function DashboardPage() {
               <>
                 <HealthBar
                   label="Expense / Income Ratio"
-                  value={latest.expense_to_income_ratio ?? 0}
+                  value={fmtScaled(latest.expense_to_income_ratio, 1, 1) ?? 0}
                   max={100}
                   color={healthColor(
                     latest.expense_to_income_ratio ?? 0,
@@ -754,7 +768,7 @@ export function DashboardPage() {
                 />
                 <HealthBar
                   label="Savings Rate"
-                  value={latest.savings_rate ?? 0}
+                  value={fmtScaled(latest.savings_rate, 1, 1) ?? 0}
                   max={100}
                   color={healthColor(latest.savings_rate ?? 0, {
                     green: 20,
@@ -947,7 +961,7 @@ export function DashboardPage() {
             ) : !latest?.investment_summary ? (
               <EmptyChartData title="No investment data available" />
             ) : (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Left: financial rows */}
                 <div className="flex flex-col gap-2.5">
                   {[

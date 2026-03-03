@@ -13,10 +13,14 @@ export function fmtCurrency(n: number): string {
  * Short format: 1.2M, 456K, etc.
  */
 export function fmtShort(n: number): string {
-  if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
-  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
-  if (n >= 1e3) return `${(n / 1e3).toFixed(0)}K`;
-  return String(n);
+  const sign = n < 0 ? "-" : "";
+  const abs = Math.abs(n);
+
+  if (abs >= 1e9) return `${sign}${(abs / 1e9).toFixed(1)}B`;
+  if (abs >= 1e6) return `${sign}${(abs / 1e6).toFixed(1)}M`;
+  if (abs >= 1e3) return `${sign}${(abs / 1e3).toFixed(0)}K`;
+
+  return `${sign}${abs}`;
 }
 
 /**
@@ -85,4 +89,15 @@ export function healthColor(
   if (value >= thresholds.green) return green;
   if (value >= thresholds.yellow) return yellow;
   return red;
+}
+
+/**
+ * Format number with scaling
+ */
+export function fmtScaled(
+  n: number,
+  scale: number = 1,
+  digits: number = 1
+): number {
+  return Number((n * scale).toFixed(digits));
 }
