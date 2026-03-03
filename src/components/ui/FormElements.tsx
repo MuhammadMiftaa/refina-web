@@ -205,7 +205,7 @@ export function OAuthButton({
       {...props}
     >
       {providerIcons[provider]}
-      <span>{providerLabels[provider]}</span>
+      <span className="hidden md:block">{providerLabels[provider]}</span>
     </button>
   );
 }

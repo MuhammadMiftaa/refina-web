@@ -1,0 +1,84 @@
+// ── Transaction Types ──
+
+export interface Category {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  parent_id: string | null;
+  name: string;
+  type: "income" | "expense" | "fund_transfer";
+  children?: Category[];
+}
+
+export interface Attachment {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  transaction_id: string;
+  image: string | null;
+  format: string | null;
+  size: number | null;
+}
+
+export interface Transaction {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  wallet_id: string;
+  category_id: string;
+  amount: number;
+  transaction_date: string;
+  description: string | null;
+  // Joined fields
+  wallet_name?: string;
+  category_name?: string;
+  category_type?: "income" | "expense" | "fund_transfer";
+  attachments?: Attachment[];
+}
+
+export interface TransactionListResponse {
+  transactions: Transaction[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface TransactionListParams {
+  page?: number;
+  page_size?: number;
+  sort_by?: string;
+  sort_order?: "asc" | "desc";
+  search?: string;
+  wallet_id?: string;
+  category_id?: string;
+  category_type?: "income" | "expense" | "fund_transfer";
+  date_from?: string;
+  date_to?: string;
+}
+
+export interface CreateTransactionPayload {
+  wallet_id: string;
+  category_id: string;
+  amount: number;
+  transaction_date: string;
+  description?: string;
+}
+
+export interface CreateTransferPayload {
+  from_wallet_id: string;
+  to_wallet_id: string;
+  amount: number;
+  transaction_date: string;
+  description?: string;
+}
+
+export interface CreateAttachmentPayload {
+  transaction_id: string;
+  image: string; // base64 encoded
+  format: string;
+  size: number;
+}

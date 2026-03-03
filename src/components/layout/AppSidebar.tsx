@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -9,6 +9,8 @@ import {
   ChevronLeft,
   ChevronRight,
   User,
+  Menu,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -31,17 +33,27 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   const initials = user?.email ? user.email.slice(0, 2).toUpperCase() : "AU";
 
-  return (
-    <aside
-      className={cn(
-        "relative flex h-screen flex-col border-r border-(--border) bg-(--card) transition-all duration-300",
-        collapsed ? "w-16" : "w-56",
-      )}
-    >
-      {/* ── Logo ── */}
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname]);
+
+  // Close on Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileOpen(false);
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  const sidebarContent = (
+    <>
+      {/* Logo */}
       <div
         className={cn(
           "flex items-center gap-2.5 border-b border-(--border) px-4 py-4",
@@ -63,9 +75,16 @@ export function AppSidebar() {
             </div>
           </div>
         )}
+        {/* Mobile close button */}
+        <button
+          onClick={() => setMobileOpen(false)}
+          className="ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-(--muted-foreground) transition hover:text-(--foreground) md:hidden"
+        >
+          <X size={18} />
+        </button>
       </div>
 
-      {/* ── Main Nav ── */}
+      {/* Main Nav */}
       <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-2">
         <div
           className={cn(
@@ -104,11 +123,9 @@ export function AppSidebar() {
         })}
       </nav>
 
-      {/* ── Bottom Section ── */}
+      {/* Bottom Section */}
       <div className="flex flex-col gap-1 border-t border-(--border) p-2">
-        {/* ── User Card ── */}
         {collapsed ? (
-          /* Collapsed: just avatar with glow */
           <div className="flex justify-center py-1">
             <div
               className="flex h-9 w-9 items-center justify-center rounded-full text-[12px] font-bold text-black"
@@ -123,7 +140,6 @@ export function AppSidebar() {
             </div>
           </div>
         ) : (
-          /* Expanded: full user card with golden glow */
           <div
             className="mt-1 overflow-hidden rounded-xl border"
             style={{
@@ -134,9 +150,7 @@ export function AppSidebar() {
                 "0 0 16px 0 rgba(218,165,32,0.12), inset 0 1px 0 rgba(255,215,0,0.1)",
             }}
           >
-            {/* Top: avatar + email */}
             <div className="flex items-center gap-3 px-3 py-2.5">
-              {/* Avatar */}
               <div
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[12px] font-bold text-black"
                 style={{
@@ -147,7 +161,6 @@ export function AppSidebar() {
               >
                 {initials}
               </div>
-              {/* Info */}
               <div className="min-w-0 flex-1">
                 <div
                   className="truncate text-[11px] font-bold leading-tight"
@@ -164,7 +177,6 @@ export function AppSidebar() {
                   {user?.email ?? ""}
                 </div>
               </div>
-              {/* Profile icon button */}
               <button
                 className="shrink-0 rounded-md p-1 text-(--muted-foreground) transition hover:text-gold-400"
                 title="Profile"
@@ -173,7 +185,6 @@ export function AppSidebar() {
               </button>
             </div>
 
-            {/* Divider with gold tint */}
             <div
               className="mx-3"
               style={{
@@ -183,7 +194,6 @@ export function AppSidebar() {
               }}
             />
 
-            {/* Bottom: logout */}
             <button
               onClick={logout}
               className="flex w-full items-center gap-2 px-3 py-2 text-[11px] font-medium text-rose-400/80 transition hover:bg-rose-500/10 hover:text-rose-400"
@@ -195,13 +205,74 @@ export function AppSidebar() {
         )}
       </div>
 
-      {/* ── Collapse toggle ── */}
+      {/* Collapse toggle (desktop only) */}
       <button
         onClick={() => setCollapsed((c) => !c)}
-        className="absolute -right-3 top-5 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-(--border) bg-(--card) text-(--muted-foreground) transition hover:text-(--foreground)"
+        className="absolute -right-3 top-5 z-10 hidden h-6 w-6 items-center justify-center rounded-full border border-(--border) bg-(--card) text-(--muted-foreground) transition hover:text-(--foreground) md:flex"
       >
         {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
       </button>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Mobile Top Bar */}
+      <div className="fixed left-0 right-0 top-0 z-50 flex items-center justify-between border-b border-(--border) bg-(--card) px-4 py-3 md:hidden">
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-(--muted-foreground) transition hover:text-(--foreground)"
+        >
+          <Menu size={20} />
+        </button>
+        <div className="flex items-center gap-2">
+          <img
+            className="h-7 w-7"
+            src="/public/images/logo.png"
+            alt="Aurify Logo"
+          />
+          <span className="font-heading text-sm font-bold text-gold-gradient">
+            Aurify
+          </span>
+        </div>
+        <div
+          className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-bold text-black"
+          style={{
+            background:
+              "linear-gradient(135deg, #ffd700 0%, #daa520 60%, #c5961e 100%)",
+          }}
+        >
+          {initials}
+        </div>
+      </div>
+
+      {/* Mobile Overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      {/* Mobile Sidebar Drawer */}
+      <aside
+        className={cn(
+          "fixed left-0 top-0 z-50 flex h-screen w-64 flex-col border-r border-(--border) bg-(--card) transition-transform duration-300 md:hidden",
+          mobileOpen ? "translate-x-0" : "-translate-x-full",
+        )}
+      >
+        {sidebarContent}
+      </aside>
+
+      {/* Desktop Sidebar */}
+      <aside
+        className={cn(
+          "relative hidden h-screen flex-col border-r border-(--border) bg-(--card) transition-all duration-300 md:flex",
+          collapsed ? "w-16" : "w-56",
+        )}
+      >
+        {sidebarContent}
+      </aside>
+    </>
   );
 }

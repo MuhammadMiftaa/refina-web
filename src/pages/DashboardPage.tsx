@@ -331,7 +331,7 @@ export function DashboardPage() {
   return (
     <MainLayout>
       {/* ════════ HEADER — Sticky Global Filter ════════ */}
-      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-(--border) bg-(--card) px-6 py-3.5">
+      <header className="sticky top-0 z-40 flex flex-col gap-3 border-b border-(--border) bg-(--card) px-4 py-3 sm:px-6 sm:py-3.5 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="text-sm font-bold tracking-wide text-(--foreground)">
             Financial Dashboard
@@ -341,8 +341,8 @@ export function DashboardPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <span className="mr-1 text-[10px] uppercase tracking-widest text-(--muted-foreground)">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <span className="mr-1 hidden text-[10px] uppercase tracking-widest text-(--muted-foreground) sm:inline">
             Filter
           </span>
 
@@ -350,7 +350,7 @@ export function DashboardPage() {
           <select
             value={walletID}
             onChange={(e) => setWalletID(e.target.value)}
-            className="rounded-lg border border-(--border) bg-(--input) px-2.5 py-1.5 text-xs text-(--foreground) outline-none focus:border-(--ring)"
+            className="min-w-0 flex-1 rounded-lg border border-(--border) bg-(--input) px-2.5 py-1.5 text-xs text-(--foreground) outline-none focus:border-(--ring) sm:flex-none"
           >
             <option value="">All Wallets</option>
             {wallets.data?.map((w) => (
@@ -361,23 +361,25 @@ export function DashboardPage() {
           </select>
 
           {/* Date range */}
-          <input
-            type="date"
-            value={dateRange.start}
-            onChange={(e) =>
-              setDateRange((p) => ({ ...p, start: e.target.value }))
-            }
-            className="rounded-lg border border-(--border) bg-(--input) px-2.5 py-1.5 text-xs text-(--foreground) outline-none focus:border-(--ring)"
-          />
-          <span className="text-xs text-(--muted-foreground)">→</span>
-          <input
-            type="date"
-            value={dateRange.end}
-            onChange={(e) =>
-              setDateRange((p) => ({ ...p, end: e.target.value }))
-            }
-            className="rounded-lg border border-(--border) bg-(--input) px-2.5 py-1.5 text-xs text-(--foreground) outline-none focus:border-(--ring)"
-          />
+          <div className="flex items-center gap-1 sm:gap-2">
+            <input
+              type="date"
+              value={dateRange.start}
+              onChange={(e) =>
+                setDateRange((p) => ({ ...p, start: e.target.value }))
+              }
+              className="w-[120px] rounded-lg border border-(--border) bg-(--input) px-2 py-1.5 text-xs text-(--foreground) outline-none focus:border-(--ring) sm:w-auto sm:px-2.5"
+            />
+            <span className="text-xs text-(--muted-foreground)">→</span>
+            <input
+              type="date"
+              value={dateRange.end}
+              onChange={(e) =>
+                setDateRange((p) => ({ ...p, end: e.target.value }))
+              }
+              className="w-[120px] rounded-lg border border-(--border) bg-(--input) px-2 py-1.5 text-xs text-(--foreground) outline-none focus:border-(--ring) sm:w-auto sm:px-2.5"
+            />
+          </div>
 
           {/* Theme toggle — icon only */}
           <button
@@ -393,16 +395,16 @@ export function DashboardPage() {
       </header>
 
       {/* ════════ CONTENT ════════ */}
-      <main className="mx-auto flex max-w-350 flex-col gap-4 p-5">
+      <main className="mx-auto flex max-w-350 flex-col gap-4 p-3 sm:p-5">
         {/* ── TIER 1: KPI Cards ── */}
         {financialSummary.loading ? (
-          <div className="flex gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
             {[1, 2, 3, 4].map((i) => (
               <SkeletonKPICard key={i} />
             ))}
           </div>
         ) : latest ? (
-          <div className="flex gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
             <KPICard
               label="Total Income"
               value={fmtShort(latest.income_now)}
@@ -556,7 +558,7 @@ export function DashboardPage() {
         </Card>
 
         {/* ── TIER 3: Detail Breakdown (3 columns) ── */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {/* Col 1: Income vs Expense Bar Chart */}
           <Card>
             <SectionHeader
@@ -799,9 +801,9 @@ export function DashboardPage() {
         </div>
 
         {/* ── TIER 4: Net Worth (40%) + Investment (60%) ── */}
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
           {/* Net Worth Composition — 2/5 */}
-          <Card className="col-span-2">
+          <Card className="lg:col-span-2">
             <div className="mb-3 flex items-center justify-between">
               <SectionHeader
                 title="Net Worth Composition"
@@ -935,7 +937,7 @@ export function DashboardPage() {
           </Card>
 
           {/* Investment Summary — 3/5 */}
-          <Card className="col-span-3">
+          <Card className="lg:col-span-3">
             <SectionHeader
               title="Investment Summary"
               subtitle="Portfolio overview"
