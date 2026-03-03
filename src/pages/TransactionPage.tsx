@@ -25,6 +25,8 @@ import {
   Tag,
   FileText,
   AlertTriangle,
+  ExternalLink,
+  Image as ImageIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -307,6 +309,94 @@ function TransactionCard({
 }
 
 // ════════════════════════════════════════════
+// ATTACHMENT PREVIEW MODAL
+// ════════════════════════════════════════════
+
+function AttachmentPreviewModal({
+  url,
+  format,
+  onClose,
+}: {
+  url: string | null;
+  format: string | null;
+  onClose: () => void;
+}) {
+  if (!url) return null;
+
+  const isImage =
+    format?.startsWith("image") || /\.(jpe?g|png|gif|webp|svg|bmp)$/i.test(url);
+
+  return (
+    <div
+      className="fixed inset-0 z-60 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-3xl overflow-hidden rounded-2xl border border-(--border) bg-(--card)"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          boxShadow:
+            "0 0 40px rgba(218,165,32,0.1), 0 25px 50px rgba(0,0,0,0.5)",
+        }}
+      >
+        <div className="flex items-center justify-between border-b border-(--border) px-5 py-3">
+          <div className="flex items-center gap-2 text-xs font-semibold text-(--foreground)">
+            <Paperclip size={14} className="text-gold-400" />
+            Attachment Preview
+          </div>
+          <div className="flex items-center gap-2">
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 rounded-lg border border-(--border) px-2.5 py-1 text-[11px] text-(--muted-foreground) transition hover:text-(--foreground)"
+            >
+              <ExternalLink size={12} /> Open
+            </a>
+            <button
+              onClick={onClose}
+              className="rounded-lg p-1 text-(--muted-foreground) transition hover:text-(--foreground)"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+        <div className="flex items-center justify-center p-4 max-h-[75vh] overflow-auto">
+          {isImage ? (
+            <img
+              src={url}
+              alt="Attachment"
+              className="max-w-full max-h-[65vh] rounded-lg object-contain"
+            />
+          ) : (
+            <div className="flex flex-col items-center gap-3 py-12">
+              <FileText
+                size={48}
+                className="text-(--muted-foreground) opacity-40"
+              />
+              <div className="text-sm font-semibold text-(--foreground)">
+                Preview not available
+              </div>
+              <div className="text-xs text-(--muted-foreground)">
+                {format ?? "Unknown format"}
+              </div>
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 flex items-center gap-1.5 rounded-lg border border-(--border) px-4 py-2 text-xs text-(--foreground) transition hover:border-gold-400/30"
+              >
+                <ExternalLink size={14} /> Open in new tab
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════
 // TRANSACTION DETAIL / EDIT / DELETE MODAL
 // ════════════════════════════════════════════
 
@@ -325,14 +415,31 @@ function TransactionDetailModal({
   const [mode, setMode] = useState<"view" | "edit" | "delete">("view");
   const [loading, setLoading] = useState(false);
 
+  // Attachment preview
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewFormat, setPreviewFormat] = useState<string | null>(null);
+
   // Edit form state
   const [editWalletId, setEditWalletId] = useState("");
   const [editCategoryId, setEditCategoryId] = useState("");
   const [editAmount, setEditAmount] = useState("");
   const [editDate, setEditDate] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  // Track new attachments to add / existing ones to remove during edit
+  const [newAttachments, setNewAttachments] = useState<File[]>([]);
+  const [removedAttachmentIds, setRemovedAttachmentIds] = useState<string[]>(
+    [],
+  );
 
   const isTransfer = transaction?.category_type === "fund_transfer";
+
+  // The visible attachments in edit mode (existing minus removed)
+  const visibleAttachments = useMemo(() => {
+    if (!transaction?.attachments) return [];
+    return transaction.attachments.filter(
+      (a) => !removedAttachmentIds.includes(a.id),
+    );
+  }, [transaction?.attachments, removedAttachmentIds]);
 
   // Populate edit fields when switching to edit mode
   const startEdit = () => {
@@ -344,6 +451,8 @@ function TransactionDetailModal({
       new Date(transaction.transaction_date).toISOString().slice(0, 10),
     );
     setEditDescription(transaction.description ?? "");
+    setNewAttachments([]);
+    setRemovedAttachmentIds([]);
     setMode("edit");
   };
 
@@ -358,10 +467,16 @@ function TransactionDetailModal({
       transaction_date: new Date(editDate).toISOString(),
       description: editDescription || undefined,
     };
-    // TODO: Call updateTransaction API
+    // TODO: Call updateTransaction API with payload
+    // TODO: For each removedAttachmentIds, call deleteAttachment API
+    // TODO: For each newAttachments, upload file and call createAttachment API
     void payload;
+    void removedAttachmentIds;
+    void newAttachments;
     toast.success("Transaction updated successfully!");
     setLoading(false);
+    setNewAttachments([]);
+    setRemovedAttachmentIds([]);
     onRefetch();
     onClose();
   };
@@ -519,14 +634,34 @@ function TransactionDetailModal({
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {transaction.attachments?.map((att) => (
-                    <div
+                    <button
                       key={att.id}
-                      className="flex items-center gap-1.5 rounded-lg border border-(--border) bg-(--secondary)/30 px-3 py-1.5 text-xs text-(--foreground)"
+                      type="button"
+                      onClick={() => {
+                        setPreviewUrl(att.image);
+                        setPreviewFormat(att.format);
+                      }}
+                      className="group flex items-center gap-1.5 rounded-lg border border-(--border) bg-(--secondary)/30 px-3 py-1.5 text-xs text-(--foreground) transition hover:border-gold-400/30 hover:bg-gold-400/5 cursor-pointer"
                     >
-                      <Paperclip size={12} className="text-gold-400" />
-                      {att.format ?? "file"} ·{" "}
-                      {att.size ? `${Math.round(att.size / 1024)}KB` : "—"}
-                    </div>
+                      {att.format?.startsWith("image") ||
+                      /\.(jpe?g|png|gif|webp)$/i.test(att.image ?? "") ? (
+                        <ImageIcon size={12} className="text-gold-400" />
+                      ) : (
+                        <Paperclip size={12} className="text-gold-400" />
+                      )}
+                      <span className="max-w-32 truncate">
+                        {att.format ?? "file"}
+                      </span>
+                      {att.size ? (
+                        <span className="text-(--muted-foreground)">
+                          · {Math.round(att.size / 1024)}KB
+                        </span>
+                      ) : null}
+                      <ExternalLink
+                        size={10}
+                        className="ml-0.5 opacity-0 transition group-hover:opacity-100 text-(--muted-foreground)"
+                      />
+                    </button>
                   ))}
                 </div>
               </div>
@@ -643,6 +778,115 @@ function TransactionDetailModal({
               />
             </div>
 
+            {/* Attachment Management */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-(--foreground) opacity-80">
+                Attachments
+              </label>
+
+              {/* Existing attachments */}
+              {visibleAttachments.length > 0 && (
+                <div className="space-y-1.5">
+                  {visibleAttachments.map((att) => (
+                    <div
+                      key={att.id}
+                      className="flex items-center gap-2 rounded-lg border border-(--border) bg-(--secondary)/30 px-3 py-2"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPreviewUrl(att.image);
+                          setPreviewFormat(att.format);
+                        }}
+                        className="flex flex-1 items-center gap-2 text-xs text-(--foreground) hover:text-gold-400 transition truncate"
+                      >
+                        {att.format?.startsWith("image") ? (
+                          <ImageIcon
+                            size={12}
+                            className="text-gold-400 shrink-0"
+                          />
+                        ) : (
+                          <Paperclip
+                            size={12}
+                            className="text-gold-400 shrink-0"
+                          />
+                        )}
+                        <span className="truncate">{att.format ?? "file"}</span>
+                        {att.size ? (
+                          <span className="text-(--muted-foreground) shrink-0">
+                            · {Math.round(att.size / 1024)}KB
+                          </span>
+                        ) : null}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setRemovedAttachmentIds((prev) => [...prev, att.id])
+                        }
+                        className="rounded p-1 text-(--muted-foreground) transition hover:text-rose-500 hover:bg-rose-500/10"
+                        title="Remove attachment"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* New attachments queued for upload */}
+              {newAttachments.length > 0 && (
+                <div className="space-y-1.5">
+                  {newAttachments.map((file, i) => (
+                    <div
+                      key={`new-${i}`}
+                      className="flex items-center gap-2 rounded-lg border border-gold-400/20 bg-gold-400/5 px-3 py-2"
+                    >
+                      <Upload size={12} className="text-gold-400 shrink-0" />
+                      <span className="flex-1 truncate text-xs text-(--foreground)">
+                        {file.name}
+                      </span>
+                      <span className="text-[10px] text-(--muted-foreground) shrink-0">
+                        {Math.round(file.size / 1024)}KB
+                      </span>
+                      <span className="rounded-full bg-gold-400/10 px-1.5 py-0.5 text-[9px] font-semibold text-gold-400 shrink-0">
+                        NEW
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setNewAttachments((prev) =>
+                            prev.filter((_, idx) => idx !== i),
+                          )
+                        }
+                        className="rounded p-1 text-(--muted-foreground) transition hover:text-rose-500 hover:bg-rose-500/10"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add attachment button */}
+              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-(--border) px-4 py-2.5 text-xs text-(--muted-foreground) transition hover:border-(--ring) hover:text-(--foreground)">
+                <Upload size={14} />
+                <span>Add attachment</span>
+                <input
+                  type="file"
+                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files ?? []);
+                    if (files.length > 0) {
+                      setNewAttachments((prev) => [...prev, ...files]);
+                    }
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            </div>
+
             <div className="flex gap-3 pt-2">
               <Button
                 type="button"
@@ -695,6 +939,15 @@ function TransactionDetailModal({
           </div>
         )}
       </div>
+      {/* Attachment Preview (rendered outside the modal card so it overlays on top) */}
+      <AttachmentPreviewModal
+        url={previewUrl}
+        format={previewFormat}
+        onClose={() => {
+          setPreviewUrl(null);
+          setPreviewFormat(null);
+        }}
+      />
     </div>
   );
 }

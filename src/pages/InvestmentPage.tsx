@@ -528,23 +528,56 @@ function CreateInvestmentModal({
   const [code, setCode] = useState("");
   const [quantity, setQuantity] = useState("");
   const [amount, setAmount] = useState("");
-  const [price, setPrice] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
+  // Track which field the user last edited so we can auto-calc the other
+  const [_lastEdited, setLastEdited] = useState<"quantity" | "amount" | null>(
+    null,
+  );
 
   if (!open) return null;
 
   const selectedAsset = assetCodes.data?.find((a) => a.code === code);
 
+  const qty = parseFloat(quantity) || 0;
+  const amt = parseFloat(amount) || 0;
+  const pricePerUnit = qty > 0 ? amt / qty : 0;
+
+  const handleQuantityChange = (val: string) => {
+    setQuantity(val);
+    setLastEdited("quantity");
+    const q = parseFloat(val) || 0;
+    // If amount is already filled, don't overwrite it — price adjusts automatically
+    // If amount is empty but we know the market price, pre-fill amount
+    if (!amount && selectedAsset?.toIDR && q > 0) {
+      setAmount(String(Math.round(q * selectedAsset.toIDR)));
+    }
+  };
+
+  const handleAmountChange = (val: string) => {
+    setAmount(val);
+    setLastEdited("amount");
+    // If quantity is already filled, price adjusts automatically
+    // If quantity is empty but we know the market price, pre-fill quantity
+    const a = parseFloat(val) || 0;
+    if (!quantity && selectedAsset?.toIDR && a > 0) {
+      setQuantity(String(parseFloat((a / selectedAsset.toIDR).toFixed(8))));
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (qty <= 0 || amt <= 0) {
+      toast.error("Quantity and amount must be greater than 0");
+      return;
+    }
     setLoading(true);
     const payload: CreateInvestmentPayload = {
       code,
-      quantity: parseFloat(quantity) || 0,
-      amount: parseFloat(amount) || 0,
-      initial_valuation: parseFloat(price) || 0,
+      quantity: qty,
+      amount: amt,
+      initial_valuation: pricePerUnit,
       date: new Date(date).toISOString(),
       description: description || undefined,
     };
@@ -556,9 +589,9 @@ function CreateInvestmentModal({
     setCode("");
     setQuantity("");
     setAmount("");
-    setPrice("");
     setDate(new Date().toISOString().slice(0, 10));
     setDescription("");
+    setLastEdited(null);
   };
 
   return (
@@ -625,32 +658,65 @@ function CreateInvestmentModal({
               type="number"
               step="any"
               value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
+              onChange={(e) => handleQuantityChange(e.target.value)}
               placeholder="0"
               min="0.00000001"
               required
             />
             <Input
-              label="Buy Price (IDR/unit)"
+              label="Total Amount (IDR)"
               type="number"
-              step="any"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
+              value={amount}
+              onChange={(e) => handleAmountChange(e.target.value)}
               placeholder="0"
-              min="0"
+              min="1"
               required
             />
           </div>
 
-          <Input
-            label="Total Amount (IDR)"
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="0"
-            min="1"
-            required
-          />
+          {/* Auto-calculated price per unit */}
+          {qty > 0 && amt > 0 && (
+            <div className="rounded-lg border border-(--border) bg-(--secondary)/30 px-4 py-3 space-y-1">
+              <div className="flex justify-between text-[11px] text-(--muted-foreground)">
+                <span>Price per {selectedAsset?.unit ?? "unit"}</span>
+                <span className="font-mono font-semibold text-(--foreground)">
+                  {fmtCurrency(pricePerUnit)}
+                </span>
+              </div>
+              {selectedAsset?.toIDR != null && selectedAsset.toIDR > 0 && (
+                <div className="flex justify-between text-[11px] text-(--muted-foreground)">
+                  <span>Market price</span>
+                  <span className="font-mono text-gold-400">
+                    {fmtCurrency(selectedAsset.toIDR)}
+                  </span>
+                </div>
+              )}
+              {selectedAsset?.toIDR != null &&
+                selectedAsset.toIDR > 0 &&
+                pricePerUnit > 0 && (
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-(--muted-foreground)">
+                      vs. market
+                    </span>
+                    <span
+                      className={cn(
+                        "font-mono font-semibold",
+                        pricePerUnit <= selectedAsset.toIDR
+                          ? "text-emerald-500"
+                          : "text-rose-500",
+                      )}
+                    >
+                      {pricePerUnit <= selectedAsset.toIDR ? "▼" : "▲"}{" "}
+                      {fmtPct(
+                        ((pricePerUnit - selectedAsset.toIDR) /
+                          selectedAsset.toIDR) *
+                          100,
+                      )}
+                    </span>
+                  </div>
+                )}
+            </div>
+          )}
 
           <Input
             label="Purchase Date"
@@ -706,7 +772,6 @@ function SellInvestmentModal({
   onRefetch: () => void;
 }) {
   const [quantity, setQuantity] = useState("");
-  const [sellPrice, setSellPrice] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [description, setDescription] = useState("");
@@ -716,10 +781,28 @@ function SellInvestmentModal({
 
   const currentPrice = investment.asset?.toIDR ?? investment.initial_valuation;
   const sellQty = parseFloat(quantity) || 0;
-  const sellPrc = parseFloat(sellPrice) || currentPrice;
+  const sellAmt = parseFloat(amount) || 0;
+  const sellPricePerUnit = sellQty > 0 ? sellAmt / sellQty : 0;
   const costBasis = sellQty * investment.initial_valuation;
-  const sellValue = parseFloat(amount) || sellQty * sellPrc;
-  const estimatedPL = sellValue - costBasis;
+  const estimatedPL = sellAmt - costBasis;
+
+  const handleSellQuantityChange = (val: string) => {
+    setQuantity(val);
+    const q = parseFloat(val) || 0;
+    // Auto-fill amount based on market price if amount is empty
+    if (!amount && q > 0) {
+      setAmount(String(Math.round(q * currentPrice)));
+    }
+  };
+
+  const handleSellAmountChange = (val: string) => {
+    setAmount(val);
+    const a = parseFloat(val) || 0;
+    // Auto-fill quantity if empty
+    if (!quantity && a > 0 && currentPrice > 0) {
+      setQuantity(String(parseFloat((a / currentPrice).toFixed(8))));
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -727,12 +810,16 @@ function SellInvestmentModal({
       toast.error("Cannot sell more than your holdings!");
       return;
     }
+    if (sellQty <= 0 || sellAmt <= 0) {
+      toast.error("Quantity and amount must be greater than 0");
+      return;
+    }
     setLoading(true);
     const payload: SellInvestmentPayload = {
       investment_id: investment.id,
       quantity: sellQty,
-      amount: parseFloat(amount) || 0,
-      sell_price: sellPrc,
+      amount: sellAmt,
+      sell_price: sellPricePerUnit,
       date: new Date(date).toISOString(),
       description: description || undefined,
     };
@@ -742,7 +829,6 @@ function SellInvestmentModal({
     onRefetch();
     onClose();
     setQuantity("");
-    setSellPrice("");
     setAmount("");
     setDate(new Date().toISOString().slice(0, 10));
     setDescription("");
@@ -804,44 +890,42 @@ function SellInvestmentModal({
               type="number"
               step="any"
               value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
+              onChange={(e) => handleSellQuantityChange(e.target.value)}
               placeholder="0"
               min="0.00000001"
               max={String(investment.quantity)}
               required
             />
             <Input
-              label="Sell Price (IDR/unit)"
+              label="Total Sell Amount (IDR)"
               type="number"
-              step="any"
-              value={sellPrice}
-              onChange={(e) => setSellPrice(e.target.value)}
-              placeholder={String(currentPrice)}
-              min="0"
+              value={amount}
+              onChange={(e) => handleSellAmountChange(e.target.value)}
+              placeholder={String(Math.round(sellQty * currentPrice))}
+              min="1"
               required
             />
           </div>
 
-          <Input
-            label="Total Sell Amount (IDR)"
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder={String(Math.round(sellQty * sellPrc))}
-            min="1"
-            required
-          />
-
-          {/* P&L Preview */}
-          {sellQty > 0 && (
+          {/* Auto-calculated sell price per unit + P&L Preview */}
+          {sellQty > 0 && sellAmt > 0 && (
             <div className="rounded-lg border border-(--border) bg-(--secondary)/30 px-4 py-3 space-y-1">
               <div className="flex justify-between text-[11px] text-(--muted-foreground)">
-                <span>Cost basis</span>
+                <span>Sell price per {investment.asset?.unit ?? "unit"}</span>
+                <span className="font-mono font-semibold text-(--foreground)">
+                  {fmtCurrency(sellPricePerUnit)}
+                </span>
+              </div>
+              <div className="flex justify-between text-[11px] text-(--muted-foreground)">
+                <span>
+                  Cost basis ({fmtQty(sellQty)} ×{" "}
+                  {fmtCurrency(investment.initial_valuation)})
+                </span>
                 <span className="font-mono">{fmtCurrency(costBasis)}</span>
               </div>
               <div className="flex justify-between text-[11px] text-(--muted-foreground)">
                 <span>Sell value</span>
-                <span className="font-mono">{fmtCurrency(sellValue)}</span>
+                <span className="font-mono">{fmtCurrency(sellAmt)}</span>
               </div>
               <div
                 className={cn(
