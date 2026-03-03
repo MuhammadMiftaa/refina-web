@@ -29,8 +29,8 @@ export default defineConfig({
         short_name: "Aurify",
         description:
           "Premium financial management SaaS — budgeting, tracking, invoicing & reporting.",
-        theme_color: "#0a0a0a",
-        background_color: "#0a0a0a",
+        theme_color: "#1a1a1a",
+        background_color: "#1a1a1a",
         display: "standalone",
         start_url: "/",
         scope: "/",

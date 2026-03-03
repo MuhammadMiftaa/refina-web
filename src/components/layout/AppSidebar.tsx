@@ -62,7 +62,7 @@ export function AppSidebar() {
       >
         <img
           className="h-10 w-10"
-          src="/public/images/logo.png"
+          src="/public/images/icons/logo.png"
           alt="Aurify Logo"
         />
         {!collapsed && (
@@ -228,7 +228,7 @@ export function AppSidebar() {
         <div className="flex items-center gap-2">
           <img
             className="h-7 w-7"
-            src="/public/images/logo.png"
+            src="/images/icons/logo.png"
             alt="Aurify Logo"
           />
           <span className="font-heading text-sm font-bold text-gold-gradient">
