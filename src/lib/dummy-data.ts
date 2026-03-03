@@ -4,6 +4,13 @@ import type {
   TransactionListResponse,
   Category,
 } from "@/types/transaction";
+import type {
+  Investment,
+  InvestmentSold,
+  InvestmentSummary,
+  AssetCode,
+  InvestmentListResponse,
+} from "@/types/investment";
 
 // ════════════════════════════════════════════
 // WALLET TYPES (DUMMY)
@@ -618,6 +625,357 @@ export function getDummyTransactionList(
 
   return {
     transactions,
+    total,
+    page,
+    page_size,
+    total_pages: totalPages,
+  };
+}
+
+// ════════════════════════════════════════════
+// ASSET CODES (DUMMY)
+// ════════════════════════════════════════════
+
+export const DUMMY_ASSET_CODES: AssetCode[] = [
+  {
+    code: "XAU",
+    name: "Gold",
+    unit: "troy oz",
+    toUSD: 2650.0,
+    toEUR: 2430.0,
+    toIDR: 42400000,
+    created_at: "2024-01-01T00:00:00Z",
+    updated_at: "2026-03-01T00:00:00Z",
+    deleted_at: null,
+  },
+  {
+    code: "XAG",
+    name: "Silver",
+    unit: "troy oz",
+    toUSD: 31.5,
+    toEUR: 28.9,
+    toIDR: 504000,
+    created_at: "2024-01-01T00:00:00Z",
+    updated_at: "2026-03-01T00:00:00Z",
+    deleted_at: null,
+  },
+  {
+    code: "BBCA",
+    name: "Bank Central Asia Tbk",
+    unit: "lot",
+    toUSD: null,
+    toEUR: null,
+    toIDR: 9875,
+    created_at: "2024-01-01T00:00:00Z",
+    updated_at: "2026-03-01T00:00:00Z",
+    deleted_at: null,
+  },
+  {
+    code: "BBRI",
+    name: "Bank Rakyat Indonesia Tbk",
+    unit: "lot",
+    toUSD: null,
+    toEUR: null,
+    toIDR: 4520,
+    created_at: "2024-01-01T00:00:00Z",
+    updated_at: "2026-03-01T00:00:00Z",
+    deleted_at: null,
+  },
+  {
+    code: "BTC",
+    name: "Bitcoin",
+    unit: "BTC",
+    toUSD: 87500.0,
+    toEUR: 80250.0,
+    toIDR: 1400000000,
+    created_at: "2024-01-01T00:00:00Z",
+    updated_at: "2026-03-01T00:00:00Z",
+    deleted_at: null,
+  },
+  {
+    code: "ETH",
+    name: "Ethereum",
+    unit: "ETH",
+    toUSD: 3250.0,
+    toEUR: 2980.0,
+    toIDR: 52000000,
+    created_at: "2024-01-01T00:00:00Z",
+    updated_at: "2026-03-01T00:00:00Z",
+    deleted_at: null,
+  },
+  {
+    code: "TLKM",
+    name: "Telkom Indonesia Tbk",
+    unit: "lot",
+    toUSD: null,
+    toEUR: null,
+    toIDR: 3880,
+    created_at: "2024-01-01T00:00:00Z",
+    updated_at: "2026-03-01T00:00:00Z",
+    deleted_at: null,
+  },
+];
+
+// ════════════════════════════════════════════
+// INVESTMENTS (DUMMY)
+// ════════════════════════════════════════════
+
+const SOLD_RECORDS: InvestmentSold[] = [
+  {
+    id: "sold-001",
+    investment_id: "inv-002",
+    user_id: "user-001",
+    quantity: 200,
+    amount: 1940000,
+    sell_price: 9700,
+    deficit: -60000,
+    date: "2026-01-15T10:00:00Z",
+    description: "Partial profit taking",
+    created_at: "2026-01-15T10:00:00Z",
+    updated_at: "2026-01-15T10:00:00Z",
+    deleted_at: null,
+  },
+  {
+    id: "sold-002",
+    investment_id: "inv-005",
+    user_id: "user-001",
+    quantity: 0.005,
+    amount: 437500,
+    sell_price: 87500,
+    deficit: 37500,
+    date: "2026-02-10T14:00:00Z",
+    description: "Selling some BTC",
+    created_at: "2026-02-10T14:00:00Z",
+    updated_at: "2026-02-10T14:00:00Z",
+    deleted_at: null,
+  },
+];
+
+export const DUMMY_INVESTMENTS: Investment[] = [
+  {
+    id: "inv-001",
+    user_id: "user-001",
+    code: "XAU",
+    quantity: 2,
+    amount: 78000000,
+    initial_valuation: 39000000,
+    date: "2025-06-15T10:00:00Z",
+    description: "Gold bar investment",
+    created_at: "2025-06-15T10:00:00Z",
+    updated_at: "2026-03-01T00:00:00Z",
+    deleted_at: null,
+    asset: DUMMY_ASSET_CODES[0],
+    sold_records: [],
+  },
+  {
+    id: "inv-002",
+    user_id: "user-001",
+    code: "BBCA",
+    quantity: 500,
+    amount: 4500000,
+    initial_valuation: 9000,
+    date: "2025-03-10T09:00:00Z",
+    description: "BCA stocks - long term hold",
+    created_at: "2025-03-10T09:00:00Z",
+    updated_at: "2026-03-01T00:00:00Z",
+    deleted_at: null,
+    asset: DUMMY_ASSET_CODES[2],
+    sold_records: [SOLD_RECORDS[0]],
+  },
+  {
+    id: "inv-003",
+    user_id: "user-001",
+    code: "BBRI",
+    quantity: 1000,
+    amount: 4200000,
+    initial_valuation: 4200,
+    date: "2025-08-20T11:00:00Z",
+    description: "BRI stocks",
+    created_at: "2025-08-20T11:00:00Z",
+    updated_at: "2026-03-01T00:00:00Z",
+    deleted_at: null,
+    asset: DUMMY_ASSET_CODES[3],
+    sold_records: [],
+  },
+  {
+    id: "inv-004",
+    user_id: "user-001",
+    code: "XAG",
+    quantity: 10,
+    amount: 4500000,
+    initial_valuation: 450000,
+    date: "2025-10-01T14:00:00Z",
+    description: "Silver investment",
+    created_at: "2025-10-01T14:00:00Z",
+    updated_at: "2026-03-01T00:00:00Z",
+    deleted_at: null,
+    asset: DUMMY_ASSET_CODES[1],
+    sold_records: [],
+  },
+  {
+    id: "inv-005",
+    user_id: "user-001",
+    code: "BTC",
+    quantity: 0.05,
+    amount: 56000000,
+    initial_valuation: 1120000000,
+    date: "2025-01-05T08:00:00Z",
+    description: "Bitcoin DCA",
+    created_at: "2025-01-05T08:00:00Z",
+    updated_at: "2026-03-01T00:00:00Z",
+    deleted_at: null,
+    asset: DUMMY_ASSET_CODES[4],
+    sold_records: [SOLD_RECORDS[1]],
+  },
+  {
+    id: "inv-006",
+    user_id: "user-001",
+    code: "ETH",
+    quantity: 1.5,
+    amount: 60000000,
+    initial_valuation: 40000000,
+    date: "2025-04-20T10:00:00Z",
+    description: "Ethereum hold",
+    created_at: "2025-04-20T10:00:00Z",
+    updated_at: "2026-03-01T00:00:00Z",
+    deleted_at: null,
+    asset: DUMMY_ASSET_CODES[5],
+    sold_records: [],
+  },
+  {
+    id: "inv-007",
+    user_id: "user-001",
+    code: "TLKM",
+    quantity: 2000,
+    amount: 7000000,
+    initial_valuation: 3500,
+    date: "2025-07-12T09:30:00Z",
+    description: "Telkom long-term",
+    created_at: "2025-07-12T09:30:00Z",
+    updated_at: "2026-03-01T00:00:00Z",
+    deleted_at: null,
+    asset: DUMMY_ASSET_CODES[6],
+    sold_records: [],
+  },
+];
+
+// ════════════════════════════════════════════
+// INVESTMENT SUMMARY (DUMMY)
+// ════════════════════════════════════════════
+
+function computeCurrentValue(inv: Investment): number {
+  const price = inv.asset?.toIDR ?? inv.initial_valuation;
+  return inv.quantity * price;
+}
+
+export function getDummyInvestmentSummary(): InvestmentSummary {
+  const totalInvested = DUMMY_INVESTMENTS.reduce((s, i) => s + i.amount, 0);
+  const totalCurrentValue = DUMMY_INVESTMENTS.reduce(
+    (s, i) => s + computeCurrentValue(i),
+    0,
+  );
+  const totalSoldAmount = DUMMY_INVESTMENTS.reduce(
+    (s, i) => s + (i.sold_records?.reduce((ss, r) => ss + r.amount, 0) ?? 0),
+    0,
+  );
+  const totalRealizedGain = DUMMY_INVESTMENTS.reduce(
+    (s, i) =>
+      s + (i.sold_records?.reduce((ss, r) => ss + (r.deficit ?? 0), 0) ?? 0),
+    0,
+  );
+  const pl = totalCurrentValue - totalInvested;
+  const plPct = totalInvested > 0 ? (pl / totalInvested) * 100 : 0;
+  return {
+    total_investments: DUMMY_INVESTMENTS.length,
+    total_invested: totalInvested,
+    total_current_value: totalCurrentValue,
+    total_profit_loss: pl,
+    total_profit_loss_pct: plPct,
+    total_sold_amount: totalSoldAmount,
+    total_realized_gain: totalRealizedGain,
+  };
+}
+
+/** Generate paginated investment list from dummy data */
+export function getDummyInvestmentList(
+  params: {
+    page?: number;
+    page_size?: number;
+    sort_by?: string;
+    sort_order?: "asc" | "desc";
+    search?: string;
+    code?: string;
+  } = {},
+): InvestmentListResponse {
+  const {
+    page = 1,
+    page_size = 10,
+    sort_by = "date",
+    sort_order = "desc",
+    search = "",
+    code = "",
+  } = params;
+
+  let filtered = [...DUMMY_INVESTMENTS];
+
+  if (code) {
+    filtered = filtered.filter((i) => i.code === code);
+  }
+
+  if (search) {
+    const q = search.toLowerCase();
+    filtered = filtered.filter(
+      (i) =>
+        i.code.toLowerCase().includes(q) ||
+        i.asset?.name.toLowerCase().includes(q) ||
+        i.description?.toLowerCase().includes(q),
+    );
+  }
+
+  filtered.sort((a, b) => {
+    let aVal: string | number = 0;
+    let bVal: string | number = 0;
+    switch (sort_by) {
+      case "amount":
+        aVal = a.amount;
+        bVal = b.amount;
+        break;
+      case "quantity":
+        aVal = a.quantity;
+        bVal = b.quantity;
+        break;
+      case "code":
+        aVal = a.code;
+        bVal = b.code;
+        break;
+      case "current_value":
+        aVal = computeCurrentValue(a);
+        bVal = computeCurrentValue(b);
+        break;
+      case "date":
+      default:
+        aVal = new Date(a.date).getTime();
+        bVal = new Date(b.date).getTime();
+        break;
+    }
+    if (typeof aVal === "string") {
+      return sort_order === "asc"
+        ? aVal.localeCompare(bVal as string)
+        : (bVal as string).localeCompare(aVal);
+    }
+    return sort_order === "asc"
+      ? (aVal as number) - (bVal as number)
+      : (bVal as number) - (aVal as number);
+  });
+
+  const total = filtered.length;
+  const totalPages = page_size === -1 ? 1 : Math.ceil(total / page_size);
+  const start = page_size === -1 ? 0 : (page - 1) * page_size;
+  const end = page_size === -1 ? total : start + page_size;
+  const investments = filtered.slice(start, end);
+
+  return {
+    investments,
     total,
     page,
     page_size,

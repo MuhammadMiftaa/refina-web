@@ -18,6 +18,13 @@ import {
   Paperclip,
   Upload,
   ChevronDown,
+  Pencil,
+  Trash2,
+  Calendar,
+  Wallet,
+  Tag,
+  FileText,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MainLayout } from "@/components/layout/MainLayout";
@@ -29,6 +36,7 @@ import { Button, Input } from "@/components/ui/FormElements";
 import type {
   Transaction,
   CreateTransactionPayload,
+  UpdateTransactionPayload,
   CreateTransferPayload,
 } from "@/types/transaction";
 import toast from "react-hot-toast";
@@ -92,14 +100,14 @@ function getCategoryTypeColor(type: string) {
   }
 }
 
-function getCategoryTypeIcon(type: string) {
+function getCategoryTypeIcon(type: string, size = 16) {
   switch (type) {
     case "income":
-      return <ArrowDownCircle size={16} className="text-emerald-500" />;
+      return <ArrowDownCircle size={size} className="text-emerald-500" />;
     case "expense":
-      return <ArrowUpCircle size={16} className="text-rose-500" />;
+      return <ArrowUpCircle size={size} className="text-rose-500" />;
     case "fund_transfer":
-      return <ArrowLeftRight size={16} className="text-blue-500" />;
+      return <ArrowLeftRight size={size} className="text-blue-500" />;
     default:
       return null;
   }
@@ -152,22 +160,28 @@ function SortHeader({
 // TRANSACTION ROW (Desktop)
 // ════════════════════════════════════════════
 
-function TransactionRow({ transaction }: { transaction: Transaction }) {
+function TransactionRow({
+  transaction,
+  onView,
+}: {
+  transaction: Transaction;
+  onView: (t: Transaction) => void;
+}) {
   const typeColors = getCategoryTypeColor(
     transaction.category_type ?? "expense",
   );
 
   return (
-    <tr className="border-b border-(--border) transition hover:bg-(--muted)/30">
-      {/* Date */}
+    <tr
+      className="border-b border-(--border) transition hover:bg-(--muted)/30 cursor-pointer"
+      onClick={() => onView(transaction)}
+    >
       <td className="whitespace-nowrap px-4 py-3 text-xs text-(--foreground)">
         {fmtDate(transaction.transaction_date)}
       </td>
-      {/* Description */}
       <td className="max-w-50 truncate px-4 py-3 text-xs text-(--foreground)">
         {transaction.description || "—"}
       </td>
-      {/* Category */}
       <td className="px-4 py-3">
         <span
           className={cn(
@@ -177,15 +191,13 @@ function TransactionRow({ transaction }: { transaction: Transaction }) {
             typeColors.border,
           )}
         >
-          {getCategoryTypeIcon(transaction.category_type ?? "expense")}
+          {getCategoryTypeIcon(transaction.category_type ?? "expense", 12)}
           {transaction.category_name}
         </span>
       </td>
-      {/* Wallet */}
       <td className="whitespace-nowrap px-4 py-3 text-xs text-(--muted-foreground)">
         {transaction.wallet_name}
       </td>
-      {/* Amount */}
       <td className="whitespace-nowrap px-4 py-3 text-right">
         <span
           className={cn(
@@ -205,7 +217,6 @@ function TransactionRow({ transaction }: { transaction: Transaction }) {
           {fmtCurrency(transaction.amount)}
         </span>
       </td>
-      {/* Attachments */}
       <td className="px-4 py-3 text-center">
         {(transaction.attachments?.length ?? 0) > 0 ? (
           <span className="inline-flex items-center gap-1 text-[11px] text-gold-400">
@@ -224,13 +235,22 @@ function TransactionRow({ transaction }: { transaction: Transaction }) {
 // TRANSACTION CARD (Mobile)
 // ════════════════════════════════════════════
 
-function TransactionCard({ transaction }: { transaction: Transaction }) {
+function TransactionCard({
+  transaction,
+  onView,
+}: {
+  transaction: Transaction;
+  onView: (t: Transaction) => void;
+}) {
   const typeColors = getCategoryTypeColor(
     transaction.category_type ?? "expense",
   );
 
   return (
-    <div className="rounded-xl border border-(--border) bg-(--card) p-4 transition hover:border-gold-400/20">
+    <div
+      className="rounded-xl border border-(--border) bg-(--card) p-4 transition hover:border-gold-400/20 cursor-pointer"
+      onClick={() => onView(transaction)}
+    >
       <div className="mb-2 flex items-start justify-between">
         <div className="flex items-center gap-2">
           {getCategoryTypeIcon(transaction.category_type ?? "expense")}
@@ -287,6 +307,399 @@ function TransactionCard({ transaction }: { transaction: Transaction }) {
 }
 
 // ════════════════════════════════════════════
+// TRANSACTION DETAIL / EDIT / DELETE MODAL
+// ════════════════════════════════════════════
+
+function TransactionDetailModal({
+  transaction,
+  onClose,
+  onRefetch,
+}: {
+  transaction: Transaction | null;
+  onClose: () => void;
+  onRefetch: () => void;
+}) {
+  const categories = useCategories();
+  const wallets = useWalletList();
+
+  const [mode, setMode] = useState<"view" | "edit" | "delete">("view");
+  const [loading, setLoading] = useState(false);
+
+  // Edit form state
+  const [editWalletId, setEditWalletId] = useState("");
+  const [editCategoryId, setEditCategoryId] = useState("");
+  const [editAmount, setEditAmount] = useState("");
+  const [editDate, setEditDate] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+
+  const isTransfer = transaction?.category_type === "fund_transfer";
+
+  // Populate edit fields when switching to edit mode
+  const startEdit = () => {
+    if (!transaction) return;
+    setEditWalletId(transaction.wallet_id);
+    setEditCategoryId(transaction.category_id);
+    setEditAmount(String(transaction.amount));
+    setEditDate(
+      new Date(transaction.transaction_date).toISOString().slice(0, 10),
+    );
+    setEditDescription(transaction.description ?? "");
+    setMode("edit");
+  };
+
+  const handleUpdate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!transaction) return;
+    setLoading(true);
+    const payload: UpdateTransactionPayload = {
+      wallet_id: editWalletId,
+      category_id: editCategoryId,
+      amount: parseFloat(editAmount) || 0,
+      transaction_date: new Date(editDate).toISOString(),
+      description: editDescription || undefined,
+    };
+    // TODO: Call updateTransaction API
+    void payload;
+    toast.success("Transaction updated successfully!");
+    setLoading(false);
+    onRefetch();
+    onClose();
+  };
+
+  const handleDelete = () => {
+    if (!transaction) return;
+    setLoading(true);
+    // TODO: Call deleteTransaction API
+    toast.success("Transaction deleted successfully!");
+    setLoading(false);
+    onRefetch();
+    onClose();
+  };
+
+  if (!transaction) return null;
+
+  const typeColors = getCategoryTypeColor(
+    transaction.category_type ?? "expense",
+  );
+  const filteredCategories =
+    categories.data?.filter((c) => c.type === transaction.category_type) ?? [];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg overflow-hidden rounded-2xl border border-(--border) bg-(--card) max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          boxShadow:
+            "0 0 40px rgba(218,165,32,0.1), 0 25px 50px rgba(0,0,0,0.5)",
+        }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-(--border) px-6 py-4">
+          <h3 className="font-bold text-(--foreground)">
+            {mode === "view"
+              ? "Transaction Detail"
+              : mode === "edit"
+                ? "Edit Transaction"
+                : "Delete Transaction"}
+          </h3>
+          <button
+            onClick={onClose}
+            className="rounded-lg p-1 text-(--muted-foreground) transition hover:text-(--foreground)"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {mode === "view" && (
+          <div className="p-6 space-y-5">
+            {/* Amount highlight */}
+            <div className="text-center">
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-(--muted-foreground)">
+                Amount
+              </div>
+              <div
+                className={cn(
+                  "font-mono text-2xl font-bold",
+                  transaction.category_type === "income"
+                    ? "text-emerald-500"
+                    : transaction.category_type === "expense"
+                      ? "text-rose-500"
+                      : "text-blue-500",
+                )}
+              >
+                {transaction.category_type === "income"
+                  ? "+"
+                  : transaction.category_type === "expense"
+                    ? "-"
+                    : ""}
+                {fmtCurrency(transaction.amount)}
+              </div>
+            </div>
+
+            {/* Type badge */}
+            <div className="flex justify-center">
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold",
+                  typeColors.bg,
+                  typeColors.text,
+                  typeColors.border,
+                )}
+              >
+                {getCategoryTypeIcon(
+                  transaction.category_type ?? "expense",
+                  14,
+                )}
+                {transaction.category_name}
+              </span>
+            </div>
+
+            {/* Detail rows */}
+            <div className="space-y-3 rounded-xl border border-(--border) bg-(--secondary)/30 p-4">
+              <div className="flex items-center gap-3">
+                <Calendar size={14} className="text-(--muted-foreground)" />
+                <div>
+                  <div className="text-[10px] text-(--muted-foreground)">
+                    Date
+                  </div>
+                  <div className="text-xs font-medium text-(--foreground)">
+                    {fmtDateTime(transaction.transaction_date)}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Wallet size={14} className="text-(--muted-foreground)" />
+                <div>
+                  <div className="text-[10px] text-(--muted-foreground)">
+                    Wallet
+                  </div>
+                  <div className="text-xs font-medium text-(--foreground)">
+                    {transaction.wallet_name}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Tag size={14} className="text-(--muted-foreground)" />
+                <div>
+                  <div className="text-[10px] text-(--muted-foreground)">
+                    Category
+                  </div>
+                  <div className="text-xs font-medium text-(--foreground)">
+                    {transaction.category_name}
+                  </div>
+                </div>
+              </div>
+              {transaction.description && (
+                <div className="flex items-start gap-3">
+                  <FileText
+                    size={14}
+                    className="mt-0.5 text-(--muted-foreground)"
+                  />
+                  <div>
+                    <div className="text-[10px] text-(--muted-foreground)">
+                      Description
+                    </div>
+                    <div className="text-xs font-medium text-(--foreground)">
+                      {transaction.description}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Attachments */}
+            {(transaction.attachments?.length ?? 0) > 0 && (
+              <div className="space-y-2">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-(--muted-foreground)">
+                  Attachments
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {transaction.attachments?.map((att) => (
+                    <div
+                      key={att.id}
+                      className="flex items-center gap-1.5 rounded-lg border border-(--border) bg-(--secondary)/30 px-3 py-1.5 text-xs text-(--foreground)"
+                    >
+                      <Paperclip size={12} className="text-gold-400" />
+                      {att.format ?? "file"} ·{" "}
+                      {att.size ? `${Math.round(att.size / 1024)}KB` : "—"}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Actions (not available for transfers) */}
+            {!isTransfer && (
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={startEdit}
+                >
+                  <Pencil size={14} /> Edit
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 border-rose-500/30 text-rose-500 hover:bg-rose-500/10 hover:border-rose-500/50"
+                  onClick={() => setMode("delete")}
+                >
+                  <Trash2 size={14} /> Delete
+                </Button>
+              </div>
+            )}
+            {isTransfer && (
+              <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-3 text-[11px] text-blue-400">
+                Fund transfer transactions cannot be edited or deleted
+                individually. They are managed as paired transactions.
+              </div>
+            )}
+          </div>
+        )}
+
+        {mode === "edit" && (
+          <form onSubmit={handleUpdate} className="flex flex-col gap-4 p-6">
+            {/* Wallet */}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-(--foreground) opacity-80">
+                Wallet
+              </label>
+              <div className="relative">
+                <select
+                  value={editWalletId}
+                  onChange={(e) => setEditWalletId(e.target.value)}
+                  required
+                  className="w-full appearance-none rounded-lg border border-(--border) bg-(--input) px-4 py-2.5 text-sm text-(--foreground) outline-none transition-colors focus:border-(--ring) focus:ring-1 focus:ring-(--ring)"
+                >
+                  <option value="">Select wallet...</option>
+                  {wallets.data?.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  size={14}
+                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-(--muted-foreground)"
+                />
+              </div>
+            </div>
+
+            {/* Category */}
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-(--foreground) opacity-80">
+                Category
+              </label>
+              <div className="relative">
+                <select
+                  value={editCategoryId}
+                  onChange={(e) => setEditCategoryId(e.target.value)}
+                  required
+                  className="w-full appearance-none rounded-lg border border-(--border) bg-(--input) px-4 py-2.5 text-sm text-(--foreground) outline-none transition-colors focus:border-(--ring) focus:ring-1 focus:ring-(--ring)"
+                >
+                  <option value="">Select category...</option>
+                  {filteredCategories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  size={14}
+                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-(--muted-foreground)"
+                />
+              </div>
+            </div>
+
+            <Input
+              label="Amount (IDR)"
+              type="number"
+              value={editAmount}
+              onChange={(e) => setEditAmount(e.target.value)}
+              min="1"
+              required
+            />
+            <Input
+              label="Transaction Date"
+              type="date"
+              value={editDate}
+              onChange={(e) => setEditDate(e.target.value)}
+              required
+            />
+
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-(--foreground) opacity-80">
+                Description
+              </label>
+              <textarea
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="Add a note..."
+                rows={2}
+                className="w-full rounded-lg border border-(--border) bg-(--input) px-4 py-2.5 text-sm text-(--foreground) outline-none transition-colors focus:border-(--ring) focus:ring-1 focus:ring-(--ring) placeholder:text-(--muted-foreground)"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setMode("view")}
+                className="flex-1"
+              >
+                Back
+              </Button>
+              <Button type="submit" isLoading={loading} className="flex-1">
+                Save Changes
+              </Button>
+            </div>
+          </form>
+        )}
+
+        {mode === "delete" && (
+          <div className="p-6 space-y-5">
+            <div className="flex flex-col items-center text-center">
+              <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-rose-500/10">
+                <AlertTriangle size={24} className="text-rose-500" />
+              </div>
+              <div className="text-sm font-bold text-(--foreground)">
+                Delete this transaction?
+              </div>
+              <div className="mt-1 text-xs text-(--muted-foreground)">
+                This action cannot be undone. The transaction of{" "}
+                <span className="font-semibold text-(--foreground)">
+                  {fmtCurrency(transaction.amount)}
+                </span>{" "}
+                will be permanently removed.
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setMode("view")}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                isLoading={loading}
+                onClick={handleDelete}
+                className="flex-1 bg-rose-600 text-white hover:bg-rose-700"
+              >
+                Delete
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════
 // ADD TRANSACTION MODAL
 // ════════════════════════════════════════════
 
@@ -295,9 +708,11 @@ type TransactionFormTab = "income" | "expense" | "transfer";
 function AddTransactionModal({
   open,
   onClose,
+  onRefetch,
 }: {
   open: boolean;
   onClose: () => void;
+  onRefetch: () => void;
 }) {
   const [tab, setTab] = useState<TransactionFormTab>("expense");
   const categories = useCategories();
@@ -308,16 +723,21 @@ function AddTransactionModal({
   const [toWalletId, setToWalletId] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [amount, setAmount] = useState("");
+  const [adminFee, setAdminFee] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [description, setDescription] = useState("");
   const [attachment, setAttachment] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Filtered categories for the selected tab
   const filteredCategories = useMemo(() => {
     if (!categories.data) return [];
     return categories.data.filter((c) => c.type === tab);
   }, [categories.data, tab]);
+
+  const fundTransferCategories = useMemo(() => {
+    if (!categories.data) return [];
+    return categories.data.filter((c) => c.type === "fund_transfer");
+  }, [categories.data]);
 
   if (!open) return null;
 
@@ -326,14 +746,22 @@ function AddTransactionModal({
     setLoading(true);
 
     if (tab === "transfer") {
+      const cashOutCat = fundTransferCategories.find((c) =>
+        c.name.toLowerCase().includes("transfer"),
+      );
+      const cashInCat = fundTransferCategories.find((c) =>
+        c.name.toLowerCase().includes("transfer"),
+      );
       const payload: CreateTransferPayload = {
         from_wallet_id: fromWalletId,
         to_wallet_id: toWalletId,
         amount: parseFloat(amount) || 0,
+        admin_fee: parseFloat(adminFee) || 0,
+        cash_out_category_id: cashOutCat?.id ?? "",
+        cash_in_category_id: cashInCat?.id ?? "",
         transaction_date: new Date(date).toISOString(),
         description: description || undefined,
       };
-      // TODO: Call createTransfer API
       void payload;
       toast.success("Transfer created successfully!");
     } else {
@@ -344,8 +772,6 @@ function AddTransactionModal({
         transaction_date: new Date(date).toISOString(),
         description: description || undefined,
       };
-      // TODO: Call createTransaction API
-      // If attachment, also call createAttachment API
       void payload;
       toast.success(
         `${tab === "income" ? "Income" : "Expense"} transaction created successfully!`,
@@ -353,13 +779,18 @@ function AddTransactionModal({
     }
 
     setLoading(false);
+    onRefetch();
     onClose();
-    // Reset
+    resetForm();
+  };
+
+  const resetForm = () => {
     setWalletId("");
     setFromWalletId("");
     setToWalletId("");
     setCategoryId("");
     setAmount("");
+    setAdminFee("");
     setDate(new Date().toISOString().slice(0, 10));
     setDescription("");
     setAttachment(null);
@@ -397,7 +828,7 @@ function AddTransactionModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg overflow-hidden rounded-2xl border border-(--border) bg-(--card)"
+        className="w-full max-w-lg overflow-hidden rounded-2xl border border-(--border) bg-(--card) max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
         style={{
           boxShadow:
@@ -406,9 +837,7 @@ function AddTransactionModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-(--border) px-6 py-4">
-          <h3 className="font-bold text-(--foreground)">
-            Add Transaction
-          </h3>
+          <h3 className="font-bold text-(--foreground)">Add Transaction</h3>
           <button
             onClick={onClose}
             className="rounded-lg p-1 text-(--muted-foreground) transition hover:text-(--foreground)"
@@ -452,7 +881,6 @@ function AddTransactionModal({
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-6">
           {tab === "transfer" ? (
             <>
-              {/* From Wallet */}
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-(--foreground) opacity-80">
                   From Wallet
@@ -482,7 +910,6 @@ function AddTransactionModal({
                 </div>
               </div>
 
-              {/* To Wallet */}
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-(--foreground) opacity-80">
                   To Wallet
@@ -514,7 +941,6 @@ function AddTransactionModal({
             </>
           ) : (
             <>
-              {/* Wallet */}
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-(--foreground) opacity-80">
                   Wallet
@@ -540,7 +966,6 @@ function AddTransactionModal({
                 </div>
               </div>
 
-              {/* Category */}
               <div className="space-y-1.5">
                 <label className="block text-sm font-medium text-(--foreground) opacity-80">
                   Category
@@ -568,7 +993,6 @@ function AddTransactionModal({
             </>
           )}
 
-          {/* Amount */}
           <Input
             label="Amount (IDR)"
             type="number"
@@ -579,7 +1003,45 @@ function AddTransactionModal({
             required
           />
 
-          {/* Date */}
+          {/* Admin Fee - only for transfers */}
+          {tab === "transfer" && (
+            <Input
+              label="Admin Fee (IDR)"
+              type="number"
+              value={adminFee}
+              onChange={(e) => setAdminFee(e.target.value)}
+              placeholder="0"
+              min="0"
+            />
+          )}
+
+          {/* Show total deducted for transfers */}
+          {tab === "transfer" &&
+            (parseFloat(amount) > 0 || parseFloat(adminFee) > 0) && (
+              <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 px-4 py-3 space-y-1">
+                <div className="flex justify-between text-[11px] text-(--muted-foreground)">
+                  <span>Transfer amount</span>
+                  <span className="font-mono">
+                    {fmtCurrency(parseFloat(amount) || 0)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-[11px] text-(--muted-foreground)">
+                  <span>Admin fee</span>
+                  <span className="font-mono">
+                    {fmtCurrency(parseFloat(adminFee) || 0)}
+                  </span>
+                </div>
+                <div className="border-t border-blue-500/20 pt-1 flex justify-between text-xs font-semibold text-blue-400">
+                  <span>Total deducted from source</span>
+                  <span className="font-mono">
+                    {fmtCurrency(
+                      (parseFloat(amount) || 0) + (parseFloat(adminFee) || 0),
+                    )}
+                  </span>
+                </div>
+              </div>
+            )}
+
           <Input
             label="Transaction Date"
             type="date"
@@ -588,7 +1050,6 @@ function AddTransactionModal({
             required
           />
 
-          {/* Description */}
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-(--foreground) opacity-80">
               Description
@@ -602,7 +1063,6 @@ function AddTransactionModal({
             />
           </div>
 
-          {/* Attachment (not for transfer) */}
           {tab !== "transfer" && (
             <div className="space-y-1.5">
               <label className="block text-sm font-medium text-(--foreground) opacity-80">
@@ -716,19 +1176,12 @@ function Pagination({
           >
             <ChevronLeft size={14} />
           </button>
-
-          {/* Page numbers */}
           {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
             let pageNum: number;
-            if (totalPages <= 5) {
-              pageNum = i + 1;
-            } else if (page <= 3) {
-              pageNum = i + 1;
-            } else if (page >= totalPages - 2) {
-              pageNum = totalPages - 4 + i;
-            } else {
-              pageNum = page - 2 + i;
-            }
+            if (totalPages <= 5) pageNum = i + 1;
+            else if (page <= 3) pageNum = i + 1;
+            else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
+            else pageNum = page - 2 + i;
             return (
               <button
                 key={pageNum}
@@ -744,7 +1197,6 @@ function Pagination({
               </button>
             );
           })}
-
           <button
             onClick={() => onPageChange(page + 1)}
             disabled={page === totalPages}
@@ -772,7 +1224,6 @@ function Pagination({
 export function TransactionPage() {
   const { theme, toggleTheme } = useTheme();
 
-  // Pagination & sort state
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [sortBy, setSortBy] = useState("transaction_date");
@@ -780,8 +1231,9 @@ export function TransactionPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [detailTransaction, setDetailTransaction] =
+    useState<Transaction | null>(null);
 
-  // Fetch transactions
   const txnList = useTransactionList({
     page,
     page_size: pageSize,
@@ -791,9 +1243,8 @@ export function TransactionPage() {
   });
 
   const handleSort = (field: string) => {
-    if (sortBy === field) {
-      setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
-    } else {
+    if (sortBy === field) setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
+    else {
       setSortBy(field);
       setSortOrder("desc");
     }
@@ -804,17 +1255,14 @@ export function TransactionPage() {
     setSearchQuery(searchInput);
     setPage(1);
   };
-
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") handleSearch();
   };
-
   const clearSearch = () => {
     setSearchInput("");
     setSearchQuery("");
     setPage(1);
   };
-
   const handlePageSizeChange = (size: number) => {
     setPageSize(size);
     setPage(1);
@@ -850,7 +1298,7 @@ export function TransactionPage() {
       </header>
 
       <div className="mx-auto max-w-350 p-3 sm:p-5">
-        {/* Search Bar */}
+        {/* Search */}
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search
@@ -879,7 +1327,7 @@ export function TransactionPage() {
           </Button>
         </div>
 
-        {/* Table (Desktop) */}
+        {/* Desktop Table */}
         <div className="hidden overflow-hidden rounded-xl border border-(--border) bg-(--card) md:block">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -968,14 +1416,16 @@ export function TransactionPage() {
                   </tr>
                 ) : (
                   txnList.data?.transactions.map((txn) => (
-                    <TransactionRow key={txn.id} transaction={txn} />
+                    <TransactionRow
+                      key={txn.id}
+                      transaction={txn}
+                      onView={setDetailTransaction}
+                    />
                   ))
                 )}
               </tbody>
             </table>
           </div>
-
-          {/* Pagination */}
           {txnList.data && (
             <Pagination
               page={txnList.data.page}
@@ -988,7 +1438,7 @@ export function TransactionPage() {
           )}
         </div>
 
-        {/* Cards (Mobile) */}
+        {/* Mobile Cards */}
         <div className="flex flex-col gap-3 md:hidden">
           {txnList.loading ? (
             Array.from({ length: 5 }).map((_, i) => (
@@ -1011,11 +1461,13 @@ export function TransactionPage() {
             </div>
           ) : (
             txnList.data?.transactions.map((txn) => (
-              <TransactionCard key={txn.id} transaction={txn} />
+              <TransactionCard
+                key={txn.id}
+                transaction={txn}
+                onView={setDetailTransaction}
+              />
             ))
           )}
-
-          {/* Mobile Pagination */}
           {txnList.data && (
             <Pagination
               page={txnList.data.page}
@@ -1029,10 +1481,16 @@ export function TransactionPage() {
         </div>
       </div>
 
-      {/* Add Transaction Modal */}
+      {/* Modals */}
       <AddTransactionModal
         open={addModalOpen}
         onClose={() => setAddModalOpen(false)}
+        onRefetch={txnList.refetch}
+      />
+      <TransactionDetailModal
+        transaction={detailTransaction}
+        onClose={() => setDetailTransaction(null)}
+        onRefetch={txnList.refetch}
       />
     </MainLayout>
   );

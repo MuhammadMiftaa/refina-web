@@ -68,10 +68,21 @@ export interface CreateTransactionPayload {
   description?: string;
 }
 
+export interface UpdateTransactionPayload {
+  wallet_id?: string;
+  category_id?: string;
+  amount?: number;
+  transaction_date?: string;
+  description?: string;
+}
+
 export interface CreateTransferPayload {
   from_wallet_id: string;
   to_wallet_id: string;
   amount: number;
+  admin_fee: number;
+  cash_out_category_id: string;
+  cash_in_category_id: string;
   transaction_date: string;
   description?: string;
 }

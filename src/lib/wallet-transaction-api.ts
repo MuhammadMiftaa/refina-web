@@ -11,6 +11,7 @@ import type {
   TransactionListParams,
   Category,
   CreateTransactionPayload,
+  UpdateTransactionPayload,
   CreateTransferPayload,
   Attachment,
   CreateAttachmentPayload,
@@ -175,6 +176,19 @@ export async function deleteTransaction(token: string, id: string) {
   return bffCall<{ message: string }>(`/transactions/${id}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+/** PUT /transactions/:id — Update a transaction */
+export async function updateTransaction(
+  token: string,
+  id: string,
+  payload: UpdateTransactionPayload,
+) {
+  return bffCall<Transaction>(`/transactions/${id}`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
   });
 }
 
