@@ -18,10 +18,24 @@ import { cn } from "@/lib/utils";
 import { fmtShort } from "@/lib/dashboard-helpers";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useWalletList, useWalletTypes, useWalletSummary } from "@/hooks/useWallet";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  useWalletList,
+  useWalletTypes,
+  useWalletSummary,
+} from "@/hooks/useWallet";
+import {
+  createWallet,
+  updateWallet,
+  deleteWallet,
+} from "@/lib/wallet-transaction-api";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button, Input } from "@/components/ui/FormElements";
-import type { Wallet as WalletT, CreateWalletPayload, UpdateWalletPayload } from "@/types/wallet";
+import type {
+  Wallet as WalletT,
+  CreateWalletPayload,
+  UpdateWalletPayload,
+} from "@/types/wallet";
 import type { WalletType } from "@/types/wallet";
 import toast from "react-hot-toast";
 
@@ -84,7 +98,8 @@ function WalletCard({
       <div
         className="h-0.5 w-full"
         style={{
-          background: "linear-gradient(90deg, transparent, #daa520, #ffd700, #daa520, transparent)",
+          background:
+            "linear-gradient(90deg, transparent, #daa520, #ffd700, #daa520, transparent)",
         }}
       />
 
@@ -96,14 +111,17 @@ function WalletCard({
             <div
               className="flex h-12 w-12 items-center justify-center rounded-xl text-sm font-bold text-black"
               style={{
-                background: "linear-gradient(135deg, #ffd700 0%, #daa520 60%, #c5961e 100%)",
+                background:
+                  "linear-gradient(135deg, #ffd700 0%, #daa520 60%, #c5961e 100%)",
                 boxShadow: "0 0 12px rgba(218,165,32,0.5)",
               }}
             >
               {getWalletInitials(wallet.name)}
             </div>
             <div>
-              <div className="text-sm font-bold text-(--foreground)">{wallet.name}</div>
+              <div className="text-sm font-bold text-(--foreground)">
+                {wallet.name}
+              </div>
               <div className="flex items-center gap-1.5 text-[11px] text-(--muted-foreground)">
                 {getWalletTypeIcon(wallet.wallet_type?.type ?? "bank")}
                 <span>{wallet.wallet_type?.name ?? "Unknown"}</span>
@@ -155,7 +173,8 @@ function WalletCard({
           className="mb-3"
           style={{
             height: "1px",
-            background: "linear-gradient(90deg, transparent, rgba(218,165,32,0.3), transparent)",
+            background:
+              "linear-gradient(90deg, transparent, rgba(218,165,32,0.3), transparent)",
           }}
         />
 
@@ -163,7 +182,9 @@ function WalletCard({
         <div className="flex items-center justify-between text-[11px]">
           <div>
             <span className="text-(--muted-foreground)">Account: </span>
-            <span className="font-mono text-(--foreground)">{wallet.number}</span>
+            <span className="font-mono text-(--foreground)">
+              {wallet.number}
+            </span>
           </div>
           <div className="flex items-center gap-1">
             <ArrowLeftRight size={11} className="text-(--muted-foreground)" />
@@ -176,7 +197,12 @@ function WalletCard({
 
         {/* Created date */}
         <div className="mt-2 text-[10px] text-(--muted-foreground)">
-          Created {new Date(wallet.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          Created{" "}
+          {new Date(wallet.created_at).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })}
         </div>
       </div>
 
@@ -184,7 +210,8 @@ function WalletCard({
       <div
         className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full opacity-20 transition-opacity group-hover:opacity-40"
         style={{
-          background: "radial-gradient(circle, rgba(218,165,32,0.3) 0%, transparent 70%)",
+          background:
+            "radial-gradient(circle, rgba(218,165,32,0.3) 0%, transparent 70%)",
         }}
       />
     </div>
@@ -222,7 +249,9 @@ function SummaryCard({
         <div className="text-[10px] uppercase tracking-widest text-(--muted-foreground)">
           {label}
         </div>
-        <div className="font-mono text-lg font-bold text-(--foreground)">{value}</div>
+        <div className="font-mono text-lg font-bold text-(--foreground)">
+          {value}
+        </div>
       </div>
     </div>
   );
@@ -243,11 +272,16 @@ function WalletFormModal({
   wallet: WalletT | null; // null = create, otherwise edit
   walletTypes: WalletType[];
   onClose: () => void;
-  onSubmit: (data: CreateWalletPayload | UpdateWalletPayload, isEdit: boolean) => void;
+  onSubmit: (
+    data: CreateWalletPayload | UpdateWalletPayload,
+    isEdit: boolean,
+  ) => void;
 }) {
   const isEdit = !!wallet;
   const [name, setName] = useState(wallet?.name ?? "");
-  const [walletTypeId, setWalletTypeId] = useState(wallet?.wallet_type_id ?? "");
+  const [walletTypeId, setWalletTypeId] = useState(
+    wallet?.wallet_type_id ?? "",
+  );
   const [number, setNumber] = useState(wallet?.number ?? "");
   const [initialDeposit, setInitialDeposit] = useState("");
   const [loading, setLoading] = useState(false);
@@ -269,7 +303,11 @@ function WalletFormModal({
     setLoading(true);
 
     if (isEdit) {
-      const payload: UpdateWalletPayload = { name, wallet_type_id: walletTypeId, number };
+      const payload: UpdateWalletPayload = {
+        name,
+        wallet_type_id: walletTypeId,
+        number,
+      };
       onSubmit(payload, true);
     } else {
       const payload: CreateWalletPayload = {
@@ -286,12 +324,16 @@ function WalletFormModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
       <div
         className="w-full max-w-md overflow-hidden rounded-2xl border border-(--border) bg-(--card)"
         onClick={(e) => e.stopPropagation()}
         style={{
-          boxShadow: "0 0 40px rgba(218,165,32,0.1), 0 25px 50px rgba(0,0,0,0.5)",
+          boxShadow:
+            "0 0 40px rgba(218,165,32,0.1), 0 25px 50px rgba(0,0,0,0.5)",
         }}
       >
         {/* Header */}
@@ -362,7 +404,12 @@ function WalletFormModal({
           )}
 
           <div className="flex gap-3 pt-2">
-            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              className="flex-1"
+            >
               Cancel
             </Button>
             <Button type="submit" isLoading={loading} className="flex-1">
@@ -393,7 +440,10 @@ function DeleteConfirmModal({
   if (!open || !wallet) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
       <div
         className="w-full max-w-sm overflow-hidden rounded-2xl border border-(--border) bg-(--card)"
         onClick={(e) => e.stopPropagation()}
@@ -404,8 +454,8 @@ function DeleteConfirmModal({
           </div>
           <h3 className="mb-2 font-bold text-(--foreground)">Delete Wallet</h3>
           <p className="text-xs text-(--muted-foreground)">
-            Are you sure you want to delete <strong>"{wallet.name}"</strong>? This action cannot be
-            undone.
+            Are you sure you want to delete <strong>"{wallet.name}"</strong>?
+            This action cannot be undone.
           </p>
           <div className="mt-6 flex gap-3">
             <Button variant="outline" onClick={onClose} className="flex-1">
@@ -430,6 +480,7 @@ function DeleteConfirmModal({
 
 export function WalletPage() {
   const { theme, toggleTheme } = useTheme();
+  const { token } = useAuth();
   const walletList = useWalletList();
   const walletTypes = useWalletTypes();
   const walletSummary = useWalletSummary();
@@ -471,25 +522,39 @@ export function WalletPage() {
     return list;
   }, [walletList.data, searchQuery, filterType]);
 
-  const handleCreateOrEdit = (
-    _data: CreateWalletPayload | UpdateWalletPayload,
+  const handleCreateOrEdit = async (
+    data: CreateWalletPayload | UpdateWalletPayload,
     isEdit: boolean,
   ) => {
-    // TODO: Call real API
-    if (isEdit) {
-      toast.success("Wallet updated successfully!");
-    } else {
-      toast.success("Wallet created successfully!");
+    if (!token) return;
+    try {
+      if (isEdit && editWallet) {
+        await updateWallet(token, editWallet.id, data as UpdateWalletPayload);
+        toast.success("Wallet updated successfully!");
+      } else {
+        await createWallet(token, data as CreateWalletPayload);
+        toast.success("Wallet created successfully!");
+      }
+      setFormOpen(false);
+      setEditWallet(null);
+      walletList.refetch();
+      walletSummary.refetch();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to save wallet");
     }
-    walletList.refetch();
   };
 
-  const handleDelete = () => {
-    if (!deleteTarget) return;
-    // TODO: Call real API
-    toast.success(`"${deleteTarget.name}" deleted successfully!`);
-    setDeleteTarget(null);
-    walletList.refetch();
+  const handleDelete = async () => {
+    if (!deleteTarget || !token) return;
+    try {
+      await deleteWallet(token, deleteTarget.id);
+      toast.success(`"${deleteTarget.name}" deleted successfully!`);
+      setDeleteTarget(null);
+      walletList.refetch();
+      walletSummary.refetch();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete wallet");
+    }
   };
 
   return (
@@ -497,19 +562,29 @@ export function WalletPage() {
       {/* Header */}
       <header className="sticky top-0 z-40 flex gap-3 border-b border-(--border) bg-(--card) px-4 py-3 sm:px-6 sm:py-3.5 flex-row items-center justify-between">
         <div>
-          <div className="text-sm font-bold tracking-wide text-(--foreground)">My Wallets</div>
+          <div className="text-sm font-bold tracking-wide text-(--foreground)">
+            My Wallets
+          </div>
           <div className="text-[10px] text-(--muted-foreground)">
             Manage your wallets and view balances
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" onClick={() => { setEditWallet(null); setFormOpen(true); }}>
+          <Button
+            size="sm"
+            onClick={() => {
+              setEditWallet(null);
+              setFormOpen(true);
+            }}
+          >
             <Plus size={14} />
             <span className="hidden sm:inline">Add Wallet</span>
           </Button>
           <button
             onClick={toggleTheme}
-            title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            title={
+              theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"
+            }
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-(--border) text-(--muted-foreground) transition hover:bg-(--muted) hover:text-(--foreground)"
           >
             {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
@@ -553,7 +628,10 @@ export function WalletPage() {
         {/* Search & Filter */}
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-(--muted-foreground)" />
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-(--muted-foreground)"
+            />
             <input
               type="text"
               value={searchQuery}
@@ -610,9 +688,14 @@ export function WalletPage() {
           </div>
         ) : filteredWallets.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <Wallet size={48} className="mb-4 text-(--muted-foreground) opacity-40" />
+            <Wallet
+              size={48}
+              className="mb-4 text-(--muted-foreground) opacity-40"
+            />
             <div className="text-sm font-semibold text-(--foreground)">
-              {searchQuery || filterType ? "No wallets found" : "No wallets yet"}
+              {searchQuery || filterType
+                ? "No wallets found"
+                : "No wallets yet"}
             </div>
             <div className="mt-1 text-xs text-(--muted-foreground)">
               {searchQuery || filterType
@@ -620,7 +703,14 @@ export function WalletPage() {
                 : "Create your first wallet to get started"}
             </div>
             {!searchQuery && !filterType && (
-              <Button size="sm" className="mt-4" onClick={() => { setEditWallet(null); setFormOpen(true); }}>
+              <Button
+                size="sm"
+                className="mt-4"
+                onClick={() => {
+                  setEditWallet(null);
+                  setFormOpen(true);
+                }}
+              >
                 <Plus size={14} /> Add Wallet
               </Button>
             )}
@@ -631,7 +721,10 @@ export function WalletPage() {
               <WalletCard
                 key={w.id}
                 wallet={w}
-                onEdit={(wallet) => { setEditWallet(wallet); setFormOpen(true); }}
+                onEdit={(wallet) => {
+                  setEditWallet(wallet);
+                  setFormOpen(true);
+                }}
                 onDelete={setDeleteTarget}
               />
             ))}
@@ -644,7 +737,10 @@ export function WalletPage() {
         open={formOpen}
         wallet={editWallet}
         walletTypes={walletTypes.data ?? []}
-        onClose={() => { setFormOpen(false); setEditWallet(null); }}
+        onClose={() => {
+          setFormOpen(false);
+          setEditWallet(null);
+        }}
         onSubmit={handleCreateOrEdit}
       />
       <DeleteConfirmModal

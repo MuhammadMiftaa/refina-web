@@ -1,14 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Wallet, WalletType, WalletSummary } from "@/types/wallet";
 import {
-  DUMMY_WALLETS,
-  DUMMY_WALLET_TYPES,
-  DUMMY_WALLET_SUMMARY,
-} from "@/lib/dummy-data";
-
-// TODO: Replace dummy data calls with real API calls when backend is ready
-// import { fetchWallets, fetchWalletTypes, fetchWalletSummary, ... } from "@/lib/wallet-transaction-api";
-// import { useAuth } from "@/contexts/AuthContext";
+  fetchWallets,
+  fetchWalletTypes,
+  fetchWalletSummary,
+} from "@/lib/wallet-transaction-api";
 
 interface AsyncState<T> {
   data: T | null;
@@ -17,6 +14,7 @@ interface AsyncState<T> {
 }
 
 export function useWalletList() {
+  const { token } = useAuth();
   const [state, setState] = useState<AsyncState<Wallet[]>>({
     data: null,
     loading: true,
@@ -26,16 +24,22 @@ export function useWalletList() {
   const fetchRef = useRef(0);
 
   const refetch = useCallback(() => {
+    if (!token) return;
     const id = ++fetchRef.current;
     setState((s) => ({ ...s, loading: true, error: null }));
 
-    // Simulate API call with dummy data
-    setTimeout(() => {
-      if (id === fetchRef.current) {
-        setState({ data: DUMMY_WALLETS, loading: false, error: null });
-      }
-    }, 600);
-  }, []);
+    fetchWallets(token)
+      .then((res) => {
+        if (id === fetchRef.current) {
+          setState({ data: res.data, loading: false, error: null });
+        }
+      })
+      .catch((err) => {
+        if (id === fetchRef.current) {
+          setState({ data: null, loading: false, error: err.message });
+        }
+      });
+  }, [token]);
 
   useEffect(() => {
     refetch();
@@ -45,6 +49,7 @@ export function useWalletList() {
 }
 
 export function useWalletTypes() {
+  const { token } = useAuth();
   const [state, setState] = useState<AsyncState<WalletType[]>>({
     data: null,
     loading: true,
@@ -52,15 +57,23 @@ export function useWalletTypes() {
   });
 
   useEffect(() => {
-    setTimeout(() => {
-      setState({ data: DUMMY_WALLET_TYPES, loading: false, error: null });
-    }, 400);
-  }, []);
+    if (!token) return;
+    setState((s) => ({ ...s, loading: true, error: null }));
+
+    fetchWalletTypes(token)
+      .then((res) => {
+        setState({ data: res.data, loading: false, error: null });
+      })
+      .catch((err) => {
+        setState({ data: null, loading: false, error: err.message });
+      });
+  }, [token]);
 
   return state;
 }
 
 export function useWalletSummary() {
+  const { token } = useAuth();
   const [state, setState] = useState<AsyncState<WalletSummary>>({
     data: null,
     loading: true,
@@ -68,11 +81,17 @@ export function useWalletSummary() {
   });
 
   const refetch = useCallback(() => {
+    if (!token) return;
     setState((s) => ({ ...s, loading: true, error: null }));
-    setTimeout(() => {
-      setState({ data: DUMMY_WALLET_SUMMARY, loading: false, error: null });
-    }, 500);
-  }, []);
+
+    fetchWalletSummary(token)
+      .then((res) => {
+        setState({ data: res.data, loading: false, error: null });
+      })
+      .catch((err) => {
+        setState({ data: null, loading: false, error: err.message });
+      });
+  }, [token]);
 
   useEffect(() => {
     refetch();
