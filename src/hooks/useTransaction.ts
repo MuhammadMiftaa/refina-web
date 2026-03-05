@@ -3,6 +3,7 @@ import type {
   TransactionListResponse,
   TransactionListParams,
   Category,
+  CategoryGroup,
 } from "@/types/transaction";
 import {
   fetchTransactions,
@@ -57,7 +58,6 @@ export function useTransactionList(params: TransactionListParams) {
   useEffect(() => {
     refetch();
   }, [
-    params.page,
     params.page_size,
     params.sort_by,
     params.sort_order,
@@ -67,6 +67,9 @@ export function useTransactionList(params: TransactionListParams) {
     params.category_type,
     params.date_from,
     params.date_to,
+    params.cursor,
+    params.cursor_amount,
+    params.cursor_date,
     refetch,
   ]);
 
@@ -87,11 +90,22 @@ export function useCategories() {
     (async () => {
       try {
         const result = await fetchCategories(token);
-        setState({
-          data: result.data as Category[],
-          loading: false,
-          error: null,
-        });
+        // API returns CategoryGroup[] — flatten into Category[]
+        const groups = result.data as unknown as CategoryGroup[];
+        const flat: Category[] = [];
+        if (Array.isArray(groups)) {
+          for (const g of groups) {
+            for (const c of g.categories) {
+              flat.push({
+                id: c.id,
+                name: c.name,
+                type: g.type as Category["type"],
+                group_name: g.group_name,
+              });
+            }
+          }
+        }
+        setState({ data: flat, loading: false, error: null });
       } catch (err: unknown) {
         const message =
           err && typeof err === "object" && "message" in err

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   ArrowUpCircle,
   ArrowDownCircle,
@@ -6,10 +6,7 @@ import {
   Search,
   X,
   Plus,
-  ChevronLeft,
   ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
@@ -17,7 +14,6 @@ import {
   Moon,
   Paperclip,
   Upload,
-  ChevronDown,
   Pencil,
   Trash2,
   Calendar,
@@ -49,6 +45,7 @@ import type {
   CreateTransferPayload,
 } from "@/types/transaction";
 import toast from "react-hot-toast";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 
 // ════════════════════════════════════════════
 // HELPERS
@@ -439,6 +436,15 @@ function TransactionDetailModal({
     [],
   );
 
+  // Reset mode when transaction changes
+  useEffect(() => {
+    setMode("view");
+    setNewAttachments([]);
+    setRemovedAttachmentIds([]);
+    setPreviewUrl(null);
+    setPreviewFormat(null);
+  }, [transaction]);
+
   const isTransfer = transaction?.category_type === "fund_transfer";
 
   // The visible attachments in edit mode (existing minus removed)
@@ -719,56 +725,36 @@ function TransactionDetailModal({
         {mode === "edit" && (
           <form onSubmit={handleUpdate} className="flex flex-col gap-4 p-6">
             {/* Wallet */}
-            <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-(--foreground) opacity-80">
-                Wallet
-              </label>
-              <div className="relative">
-                <select
-                  value={editWalletId}
-                  onChange={(e) => setEditWalletId(e.target.value)}
-                  required
-                  className="w-full appearance-none rounded-lg border border-(--border) bg-(--input) px-4 py-2.5 text-sm text-(--foreground) outline-none transition-colors focus:border-(--ring) focus:ring-1 focus:ring-(--ring)"
-                >
-                  <option value="">Select wallet...</option>
-                  {wallets.data?.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  size={14}
-                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-(--muted-foreground)"
-                />
-              </div>
-            </div>
+            <SearchableSelect
+              label="Wallet"
+              value={editWalletId}
+              onChange={setEditWalletId}
+              options={
+                wallets.data?.map((w) => ({
+                  value: w.id,
+                  label: w.name,
+                })) ?? []
+              }
+              placeholder="Select wallet..."
+              searchPlaceholder="Search wallet..."
+              required
+            />
 
             {/* Category */}
-            <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-(--foreground) opacity-80">
-                Category
-              </label>
-              <div className="relative">
-                <select
-                  value={editCategoryId}
-                  onChange={(e) => setEditCategoryId(e.target.value)}
-                  required
-                  className="w-full appearance-none rounded-lg border border-(--border) bg-(--input) px-4 py-2.5 text-sm text-(--foreground) outline-none transition-colors focus:border-(--ring) focus:ring-1 focus:ring-(--ring)"
-                >
-                  <option value="">Select category...</option>
-                  {filteredCategories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  size={14}
-                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-(--muted-foreground)"
-                />
-              </div>
-            </div>
+            <SearchableSelect
+              label="Category"
+              value={editCategoryId}
+              onChange={setEditCategoryId}
+              options={filteredCategories.map((c) => ({
+                value: c.id,
+                label: c.name,
+                group: c.group_name,
+              }))}
+              placeholder="Select category..."
+              searchPlaceholder="Search category..."
+              grouped
+              required
+            />
 
             <Input
               label="Amount (IDR)"
@@ -1004,6 +990,22 @@ function AddTransactionModal({
   const [attachment, setAttachment] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!open) {
+      setTab("expense");
+      setWalletId("");
+      setFromWalletId("");
+      setToWalletId("");
+      setCategoryId("");
+      setAmount("");
+      setAdminFee("");
+      setDate(new Date().toISOString().slice(0, 10));
+      setDescription("");
+      setAttachment(null);
+    }
+  }, [open]);
+
   const filteredCategories = useMemo(() => {
     if (!categories.data) return [];
     return categories.data.filter((c) => c.type === tab);
@@ -1166,115 +1168,69 @@ function AddTransactionModal({
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-6">
           {tab === "transfer" ? (
             <>
-              <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-(--foreground) opacity-80">
-                  From Wallet
-                </label>
-                <div className="relative">
-                  <select
-                    value={fromWalletId}
-                    onChange={(e) => setFromWalletId(e.target.value)}
-                    required
-                    className="w-full appearance-none rounded-lg border border-(--border) bg-(--input) px-4 py-2.5 text-sm text-(--foreground) outline-none transition-colors focus:border-(--ring) focus:ring-1 focus:ring-(--ring)"
-                  >
-                    <option value="">Select source wallet...</option>
-                    {wallets.data?.map((w) => (
-                      <option
-                        key={w.id}
-                        value={w.id}
-                        disabled={w.id === toWalletId}
-                      >
-                        {w.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    size={14}
-                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-(--muted-foreground)"
-                  />
-                </div>
-              </div>
+              <SearchableSelect
+                label="From Wallet"
+                value={fromWalletId}
+                onChange={setFromWalletId}
+                options={
+                  wallets.data?.map((w) => ({
+                    value: w.id,
+                    label: w.name,
+                    disabled: w.id === toWalletId,
+                  })) ?? []
+                }
+                placeholder="Select source wallet..."
+                searchPlaceholder="Search wallet..."
+                required
+              />
 
-              <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-(--foreground) opacity-80">
-                  To Wallet
-                </label>
-                <div className="relative">
-                  <select
-                    value={toWalletId}
-                    onChange={(e) => setToWalletId(e.target.value)}
-                    required
-                    className="w-full appearance-none rounded-lg border border-(--border) bg-(--input) px-4 py-2.5 text-sm text-(--foreground) outline-none transition-colors focus:border-(--ring) focus:ring-1 focus:ring-(--ring)"
-                  >
-                    <option value="">Select destination wallet...</option>
-                    {wallets.data?.map((w) => (
-                      <option
-                        key={w.id}
-                        value={w.id}
-                        disabled={w.id === fromWalletId}
-                      >
-                        {w.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    size={14}
-                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-(--muted-foreground)"
-                  />
-                </div>
-              </div>
+              <SearchableSelect
+                label="To Wallet"
+                value={toWalletId}
+                onChange={setToWalletId}
+                options={
+                  wallets.data?.map((w) => ({
+                    value: w.id,
+                    label: w.name,
+                    disabled: w.id === fromWalletId,
+                  })) ?? []
+                }
+                placeholder="Select destination wallet..."
+                searchPlaceholder="Search wallet..."
+                required
+              />
             </>
           ) : (
             <>
-              <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-(--foreground) opacity-80">
-                  Wallet
-                </label>
-                <div className="relative">
-                  <select
-                    value={walletId}
-                    onChange={(e) => setWalletId(e.target.value)}
-                    required
-                    className="w-full appearance-none rounded-lg border border-(--border) bg-(--input) px-4 py-2.5 text-sm text-(--foreground) outline-none transition-colors focus:border-(--ring) focus:ring-1 focus:ring-(--ring)"
-                  >
-                    <option value="">Select wallet...</option>
-                    {wallets.data?.map((w) => (
-                      <option key={w.id} value={w.id}>
-                        {w.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    size={14}
-                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-(--muted-foreground)"
-                  />
-                </div>
-              </div>
+              <SearchableSelect
+                label="Wallet"
+                value={walletId}
+                onChange={setWalletId}
+                options={
+                  wallets.data?.map((w) => ({
+                    value: w.id,
+                    label: w.name,
+                  })) ?? []
+                }
+                placeholder="Select wallet..."
+                searchPlaceholder="Search wallet..."
+                required
+              />
 
-              <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-(--foreground) opacity-80">
-                  Category
-                </label>
-                <div className="relative">
-                  <select
-                    value={categoryId}
-                    onChange={(e) => setCategoryId(e.target.value)}
-                    required
-                    className="w-full appearance-none rounded-lg border border-(--border) bg-(--input) px-4 py-2.5 text-sm text-(--foreground) outline-none transition-colors focus:border-(--ring) focus:ring-1 focus:ring-(--ring)"
-                  >
-                    <option value="">Select category...</option>
-                    {filteredCategories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    size={14}
-                    className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-(--muted-foreground)"
-                  />
-                </div>
-              </div>
+              <SearchableSelect
+                label="Category"
+                value={categoryId}
+                onChange={setCategoryId}
+                options={filteredCategories.map((c) => ({
+                  value: c.id,
+                  label: c.name,
+                  group: c.group_name,
+                }))}
+                placeholder="Select category..."
+                searchPlaceholder="Search category..."
+                grouped
+                required
+              />
             </>
           )}
 
@@ -1410,21 +1366,19 @@ function AddTransactionModal({
 // PAGINATION
 // ════════════════════════════════════════════
 
-const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, -1] as const;
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
 function Pagination({
-  page,
-  totalPages,
+  hasNext,
   total,
   pageSize,
-  onPageChange,
+  onLoadMore,
   onPageSizeChange,
 }: {
-  page: number;
-  totalPages: number;
+  hasNext: boolean;
   total: number;
   pageSize: number;
-  onPageChange: (p: number) => void;
+  onLoadMore: () => void;
   onPageSizeChange: (s: number) => void;
 }) {
   return (
@@ -1438,63 +1392,21 @@ function Pagination({
         >
           {PAGE_SIZE_OPTIONS.map((s) => (
             <option key={s} value={s}>
-              {s === -1 ? "All" : s}
+              {s}
             </option>
           ))}
         </select>
         <span>of {total} entries</span>
       </div>
 
-      {pageSize !== -1 && totalPages > 1 && (
+      {hasNext && (
         <div className="flex items-center gap-1">
           <button
-            onClick={() => onPageChange(1)}
-            disabled={page === 1}
-            className="rounded-md border border-(--border) p-1.5 text-(--muted-foreground) transition hover:text-(--foreground) disabled:opacity-30"
+            onClick={onLoadMore}
+            className="flex items-center gap-1.5 rounded-md border border-(--border) px-3 py-1.5 text-[11px] font-semibold text-(--muted-foreground) transition hover:border-gold-400/30 hover:text-(--foreground)"
           >
-            <ChevronsLeft size={14} />
-          </button>
-          <button
-            onClick={() => onPageChange(page - 1)}
-            disabled={page === 1}
-            className="rounded-md border border-(--border) p-1.5 text-(--muted-foreground) transition hover:text-(--foreground) disabled:opacity-30"
-          >
-            <ChevronLeft size={14} />
-          </button>
-          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-            let pageNum: number;
-            if (totalPages <= 5) pageNum = i + 1;
-            else if (page <= 3) pageNum = i + 1;
-            else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
-            else pageNum = page - 2 + i;
-            return (
-              <button
-                key={pageNum}
-                onClick={() => onPageChange(pageNum)}
-                className={cn(
-                  "flex h-7 w-7 items-center justify-center rounded-md text-[11px] font-semibold transition",
-                  page === pageNum
-                    ? "border border-gold-400/40 bg-gold-400/10 text-gold-400"
-                    : "border border-(--border) text-(--muted-foreground) hover:text-(--foreground)",
-                )}
-              >
-                {pageNum}
-              </button>
-            );
-          })}
-          <button
-            onClick={() => onPageChange(page + 1)}
-            disabled={page === totalPages}
-            className="rounded-md border border-(--border) p-1.5 text-(--muted-foreground) transition hover:text-(--foreground) disabled:opacity-30"
-          >
+            Load More
             <ChevronRight size={14} />
-          </button>
-          <button
-            onClick={() => onPageChange(totalPages)}
-            disabled={page === totalPages}
-            className="rounded-md border border-(--border) p-1.5 text-(--muted-foreground) transition hover:text-(--foreground) disabled:opacity-30"
-          >
-            <ChevronsRight size={14} />
           </button>
         </div>
       )}
@@ -1509,23 +1421,35 @@ function Pagination({
 export function TransactionPage() {
   const { theme, toggleTheme } = useTheme();
 
-  const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [sortBy, setSortBy] = useState("transaction_date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [cursorAmount, setCursorAmount] = useState<number | undefined>(
+    undefined,
+  );
+  const [cursorDate, setCursorDate] = useState<string | undefined>(undefined);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [detailTransaction, setDetailTransaction] =
     useState<Transaction | null>(null);
 
   const txnList = useTransactionList({
-    page,
     page_size: pageSize,
     sort_by: sortBy,
     sort_order: sortOrder,
     search: searchQuery,
+    cursor,
+    cursor_amount: cursorAmount,
+    cursor_date: cursorDate,
   });
+
+  const resetCursor = () => {
+    setCursor(undefined);
+    setCursorAmount(undefined);
+    setCursorDate(undefined);
+  };
 
   const handleSort = (field: string) => {
     if (sortBy === field) setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
@@ -1533,12 +1457,12 @@ export function TransactionPage() {
       setSortBy(field);
       setSortOrder("desc");
     }
-    setPage(1);
+    resetCursor();
   };
 
   const handleSearch = () => {
     setSearchQuery(searchInput);
-    setPage(1);
+    resetCursor();
   };
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") handleSearch();
@@ -1546,11 +1470,18 @@ export function TransactionPage() {
   const clearSearch = () => {
     setSearchInput("");
     setSearchQuery("");
-    setPage(1);
+    resetCursor();
   };
   const handlePageSizeChange = (size: number) => {
     setPageSize(size);
-    setPage(1);
+    resetCursor();
+  };
+  const handleLoadMore = () => {
+    if (txnList.data) {
+      setCursor(txnList.data.next_cursor);
+      setCursorAmount(txnList.data.next_cursor_amount);
+      setCursorDate(txnList.data.next_cursor_date);
+    }
   };
 
   return (
@@ -1713,11 +1644,10 @@ export function TransactionPage() {
           </div>
           {txnList.data && (
             <Pagination
-              page={txnList.data.page}
-              totalPages={txnList.data.total_pages}
+              hasNext={txnList.data.has_next}
               total={txnList.data.total}
               pageSize={pageSize}
-              onPageChange={setPage}
+              onLoadMore={handleLoadMore}
               onPageSizeChange={handlePageSizeChange}
             />
           )}
@@ -1755,11 +1685,10 @@ export function TransactionPage() {
           )}
           {txnList.data && (
             <Pagination
-              page={txnList.data.page}
-              totalPages={txnList.data.total_pages}
+              hasNext={txnList.data.has_next}
               total={txnList.data.total}
               pageSize={pageSize}
-              onPageChange={setPage}
+              onLoadMore={handleLoadMore}
               onPageSizeChange={handlePageSizeChange}
             />
           )}

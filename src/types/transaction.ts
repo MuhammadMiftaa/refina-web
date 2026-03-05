@@ -1,14 +1,22 @@
 // ── Transaction Types ──
 
+export interface CategoryItem {
+  id: string;
+  name: string;
+}
+
+export interface CategoryGroup {
+  group_name: string;
+  type: "income" | "expense" | "fund_transfer";
+  categories: CategoryItem[];
+}
+
+/** Flat category (derived from CategoryGroup for easier use in select components) */
 export interface Category {
   id: string;
-  created_at: string;
-  updated_at: string;
-  deleted_at: string | null;
-  parent_id: string | null;
   name: string;
   type: "income" | "expense" | "fund_transfer";
-  children?: Category[];
+  group_name: string;
 }
 
 export interface Attachment {
@@ -42,13 +50,14 @@ export interface Transaction {
 export interface TransactionListResponse {
   transactions: Transaction[];
   total: number;
-  page: number;
   page_size: number;
-  total_pages: number;
+  next_cursor: string;
+  has_next: boolean;
+  next_cursor_amount: number;
+  next_cursor_date: string;
 }
 
 export interface TransactionListParams {
-  page?: number;
   page_size?: number;
   sort_by?: string;
   sort_order?: "asc" | "desc";
@@ -58,6 +67,9 @@ export interface TransactionListParams {
   category_type?: "income" | "expense" | "fund_transfer";
   date_from?: string;
   date_to?: string;
+  cursor?: string;
+  cursor_amount?: number;
+  cursor_date?: string;
 }
 
 export interface CreateTransactionPayload {

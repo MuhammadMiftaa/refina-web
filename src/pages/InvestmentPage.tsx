@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   TrendingUp,
   TrendingDown,
@@ -31,11 +31,16 @@ import {
 import { cn } from "@/lib/utils";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   useInvestmentList,
   useInvestmentSummary,
   useAssetCodes,
 } from "@/hooks/useInvestment";
+import {
+  createInvestment as createInvestmentAPI,
+  sellInvestment as sellInvestmentAPI,
+} from "@/lib/investment-api";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Button, Input } from "@/components/ui/FormElements";
 import type {
@@ -524,6 +529,7 @@ function CreateInvestmentModal({
   onClose: () => void;
   onRefetch: () => void;
 }) {
+  const { token } = useAuth();
   const assetCodes = useAssetCodes();
   const [code, setCode] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -535,6 +541,18 @@ function CreateInvestmentModal({
   const [_lastEdited, setLastEdited] = useState<"quantity" | "amount" | null>(
     null,
   );
+
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!open) {
+      setCode("");
+      setQuantity("");
+      setAmount("");
+      setDate(new Date().toISOString().slice(0, 10));
+      setDescription("");
+      setLastEdited(null);
+    }
+  }, [open]);
 
   if (!open) return null;
 
@@ -566,7 +584,7 @@ function CreateInvestmentModal({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (qty <= 0 || amt <= 0) {
       toast.error("Quantity and amount must be greater than 0");
@@ -581,17 +599,26 @@ function CreateInvestmentModal({
       date: new Date(date).toISOString(),
       description: description || undefined,
     };
-    void payload;
-    toast.success("Investment created successfully!");
-    setLoading(false);
-    onRefetch();
-    onClose();
-    setCode("");
-    setQuantity("");
-    setAmount("");
-    setDate(new Date().toISOString().slice(0, 10));
-    setDescription("");
-    setLastEdited(null);
+    try {
+      await createInvestmentAPI(token!, payload);
+      toast.success("Investment created successfully!");
+      onRefetch();
+      onClose();
+      setCode("");
+      setQuantity("");
+      setAmount("");
+      setDate(new Date().toISOString().slice(0, 10));
+      setDescription("");
+      setLastEdited(null);
+    } catch (err: unknown) {
+      const msg =
+        err && typeof err === "object" && "message" in err
+          ? (err as { message: string }).message
+          : "Failed to create investment";
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -771,11 +798,22 @@ function SellInvestmentModal({
   onClose: () => void;
   onRefetch: () => void;
 }) {
+  const { token } = useAuth();
   const [quantity, setQuantity] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!investment) {
+      setQuantity("");
+      setAmount("");
+      setDate(new Date().toISOString().slice(0, 10));
+      setDescription("");
+      setLoading(false);
+    }
+  }, [investment]);
 
   if (!investment) return null;
 
@@ -804,7 +842,7 @@ function SellInvestmentModal({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (sellQty > investment.quantity) {
       toast.error("Cannot sell more than your holdings!");
@@ -816,22 +854,24 @@ function SellInvestmentModal({
     }
     setLoading(true);
     const payload: SellInvestmentPayload = {
-      investment_id: investment.id,
+      asset_code: investment.code,
       quantity: sellQty,
       amount: sellAmt,
-      sell_price: sellPricePerUnit,
       date: new Date(date).toISOString(),
       description: description || undefined,
     };
-    void payload;
-    toast.success("Investment sold successfully!");
-    setLoading(false);
-    onRefetch();
-    onClose();
-    setQuantity("");
-    setAmount("");
-    setDate(new Date().toISOString().slice(0, 10));
-    setDescription("");
+    try {
+      await sellInvestmentAPI(token!, payload);
+      toast.success("Investment sold successfully!");
+      onRefetch();
+      onClose();
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to sell investment";
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

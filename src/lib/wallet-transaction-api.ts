@@ -115,13 +115,12 @@ export async function fetchWalletTypes(token: string) {
 // TRANSACTION API
 // ════════════════════════════════════════════
 
-/** GET /transactions — List transactions with pagination, sorting, filtering */
+/** GET /transactions — List transactions with cursor-based pagination, sorting, filtering */
 export async function fetchTransactions(
   token: string,
   params: TransactionListParams,
 ) {
   const query = new URLSearchParams();
-  if (params.page) query.set("page", String(params.page));
   if (params.page_size) query.set("page_size", String(params.page_size));
   if (params.sort_by) query.set("sort_by", params.sort_by);
   if (params.sort_order) query.set("sort_order", params.sort_order);
@@ -131,6 +130,10 @@ export async function fetchTransactions(
   if (params.category_type) query.set("category_type", params.category_type);
   if (params.date_from) query.set("date_from", params.date_from);
   if (params.date_to) query.set("date_to", params.date_to);
+  if (params.cursor) query.set("cursor", params.cursor);
+  if (params.cursor_amount)
+    query.set("cursor_amount", String(params.cursor_amount));
+  if (params.cursor_date) query.set("cursor_date", params.cursor_date);
 
   return bffCall<TransactionListResponse>(`/transactions?${query.toString()}`, {
     headers: { Authorization: `Bearer ${token}` },

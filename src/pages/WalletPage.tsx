@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Plus,
   Wallet,
@@ -11,7 +11,6 @@ import {
   ArrowLeftRight,
   Sun,
   Moon,
-  ChevronDown,
   AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -38,6 +37,7 @@ import type {
 } from "@/types/wallet";
 import type { WalletType } from "@/types/wallet";
 import toast from "react-hot-toast";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 
 // ════════════════════════════════════════════
 // HELPERS
@@ -278,23 +278,21 @@ function WalletFormModal({
   ) => void;
 }) {
   const isEdit = !!wallet;
-  const [name, setName] = useState(wallet?.name ?? "");
-  const [walletTypeId, setWalletTypeId] = useState(
-    wallet?.wallet_type_id ?? "",
-  );
-  const [number, setNumber] = useState(wallet?.number ?? "");
+  const [name, setName] = useState("");
+  const [walletTypeId, setWalletTypeId] = useState("");
+  const [number, setNumber] = useState("");
   const [initialDeposit, setInitialDeposit] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Reset form when opened
-  useState(() => {
+  // Reset / populate form when modal opens or wallet changes
+  useEffect(() => {
     if (open) {
       setName(wallet?.name ?? "");
       setWalletTypeId(wallet?.wallet_type_id ?? "");
       setNumber(wallet?.number ?? "");
       setInitialDeposit("");
     }
-  });
+  }, [open, wallet]);
 
   if (!open) return null;
 
@@ -359,30 +357,18 @@ function WalletFormModal({
             required
           />
 
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-(--foreground) opacity-80">
-              Wallet Type
-            </label>
-            <div className="relative">
-              <select
-                value={walletTypeId}
-                onChange={(e) => setWalletTypeId(e.target.value)}
-                required
-                className="w-full appearance-none rounded-lg border border-(--border) bg-(--input) px-4 py-2.5 text-sm text-(--foreground) outline-none transition-colors focus:border-(--ring) focus:ring-1 focus:ring-(--ring)"
-              >
-                <option value="">Select type...</option>
-                {walletTypes.map((wt) => (
-                  <option key={wt.id} value={wt.id}>
-                    {wt.name} ({wt.type})
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                size={14}
-                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-(--muted-foreground)"
-              />
-            </div>
-          </div>
+          <SearchableSelect
+            label="Wallet Type"
+            value={walletTypeId}
+            onChange={setWalletTypeId}
+            options={walletTypes.map((wt) => ({
+              value: wt.id,
+              label: `${wt.name} (${wt.type})`,
+            }))}
+            placeholder="Select type..."
+            searchPlaceholder="Search wallet type..."
+            required
+          />
 
           <Input
             label="Account Number"

@@ -6,14 +6,11 @@ import type {
   AssetCode,
 } from "@/types/investment";
 import {
-  getDummyInvestmentList,
-  getDummyInvestmentSummary,
-  DUMMY_ASSET_CODES,
-} from "@/lib/dummy-data";
-
-// TODO: Replace dummy data calls with real API calls when backend is ready
-// import { fetchInvestments, fetchInvestmentSummary, fetchAssetCodes } from "@/lib/investment-api";
-// import { useAuth } from "@/contexts/AuthContext";
+  fetchInvestments,
+  fetchInvestmentSummary,
+  fetchAssetCodes,
+} from "@/lib/investment-api";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AsyncState<T> {
   data: T | null;
@@ -22,6 +19,7 @@ interface AsyncState<T> {
 }
 
 export function useInvestmentList(params: InvestmentListParams) {
+  const { token } = useAuth();
   const [state, setState] = useState<AsyncState<InvestmentListResponse>>({
     data: null,
     loading: true,
@@ -32,17 +30,31 @@ export function useInvestmentList(params: InvestmentListParams) {
   const paramsRef = useRef(params);
   paramsRef.current = params;
 
-  const refetch = useCallback(() => {
+  const refetch = useCallback(async () => {
+    if (!token) return;
+
     const id = ++fetchRef.current;
     setState((s) => ({ ...s, loading: true, error: null }));
 
-    setTimeout(() => {
+    try {
+      const result = await fetchInvestments(token, paramsRef.current);
       if (id === fetchRef.current) {
-        const result = getDummyInvestmentList(paramsRef.current);
-        setState({ data: result, loading: false, error: null });
+        setState({
+          data: result.data as InvestmentListResponse,
+          loading: false,
+          error: null,
+        });
       }
-    }, 500);
-  }, []);
+    } catch (err: unknown) {
+      if (id === fetchRef.current) {
+        const message =
+          err && typeof err === "object" && "message" in err
+            ? (err as { message: string }).message
+            : "Failed to fetch investments";
+        setState({ data: null, loading: false, error: message });
+      }
+    }
+  }, [token]);
 
   useEffect(() => {
     refetch();
@@ -60,22 +72,33 @@ export function useInvestmentList(params: InvestmentListParams) {
 }
 
 export function useInvestmentSummary() {
+  const { token } = useAuth();
   const [state, setState] = useState<AsyncState<InvestmentSummary>>({
     data: null,
     loading: true,
     error: null,
   });
 
-  const refetch = useCallback(() => {
+  const refetch = useCallback(async () => {
+    if (!token) return;
+
     setState((s) => ({ ...s, loading: true, error: null }));
-    setTimeout(() => {
+
+    try {
+      const result = await fetchInvestmentSummary(token);
       setState({
-        data: getDummyInvestmentSummary(),
+        data: result.data as InvestmentSummary,
         loading: false,
         error: null,
       });
-    }, 400);
-  }, []);
+    } catch (err: unknown) {
+      const message =
+        err && typeof err === "object" && "message" in err
+          ? (err as { message: string }).message
+          : "Failed to fetch investment summary";
+      setState({ data: null, loading: false, error: message });
+    }
+  }, [token]);
 
   useEffect(() => {
     refetch();
@@ -85,6 +108,7 @@ export function useInvestmentSummary() {
 }
 
 export function useAssetCodes() {
+  const { token } = useAuth();
   const [state, setState] = useState<AsyncState<AssetCode[]>>({
     data: null,
     loading: true,
@@ -92,10 +116,26 @@ export function useAssetCodes() {
   });
 
   useEffect(() => {
-    setTimeout(() => {
-      setState({ data: DUMMY_ASSET_CODES, loading: false, error: null });
-    }, 300);
-  }, []);
+    if (!token) return;
+
+    (async () => {
+      try {
+        const result = await fetchAssetCodes(token);
+        const data = result.data as { assetCodes: AssetCode[] };
+        setState({
+          data: data.assetCodes ?? [],
+          loading: false,
+          error: null,
+        });
+      } catch (err: unknown) {
+        const message =
+          err && typeof err === "object" && "message" in err
+            ? (err as { message: string }).message
+            : "Failed to fetch asset codes";
+        setState({ data: null, loading: false, error: message });
+      }
+    })();
+  }, [token]);
 
   return state;
 }

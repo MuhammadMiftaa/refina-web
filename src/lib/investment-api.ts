@@ -1,6 +1,5 @@
 import type {
   Investment,
-  InvestmentSold,
   InvestmentSummary,
   InvestmentListResponse,
   InvestmentListParams,
@@ -67,7 +66,7 @@ export async function fetchInvestmentById(token: string, id: string) {
   });
 }
 
-/** POST /investments — Create investment */
+/** POST /investments — Create investment (buy) */
 export async function createInvestment(
   token: string,
   payload: CreateInvestmentPayload,
@@ -79,11 +78,15 @@ export async function createInvestment(
   });
 }
 
-/** DELETE /investments/:id — Delete investment */
-export async function deleteInvestment(token: string, id: string) {
-  return bffCall<{ message: string }>(`/investments/${id}`, {
-    method: "DELETE",
+/** POST /investments/sell — Sell investment */
+export async function sellInvestment(
+  token: string,
+  payload: SellInvestmentPayload,
+) {
+  return bffCall<{ soldRecords: unknown[] }>("/investments/sell", {
+    method: "POST",
     headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
   });
 }
 
@@ -94,43 +97,9 @@ export async function fetchInvestmentSummary(token: string) {
   });
 }
 
-// ════════════════════════════════════════════
-// INVESTMENT SOLD API
-// ════════════════════════════════════════════
-
-/** POST /investments/sell — Sell investment */
-export async function sellInvestment(
-  token: string,
-  payload: SellInvestmentPayload,
-) {
-  return bffCall<InvestmentSold>("/investments/sell", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify(payload),
-  });
-}
-
-/** GET /investments/:id/sold — List sold records for an investment */
-export async function fetchSoldRecords(token: string, investmentId: string) {
-  return bffCall<InvestmentSold[]>(`/investments/${investmentId}/sold`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-}
-
-// ════════════════════════════════════════════
-// ASSET CODE API
-// ════════════════════════════════════════════
-
-/** GET /asset-codes — List available asset codes */
+/** GET /investments/asset-codes — List available asset codes */
 export async function fetchAssetCodes(token: string) {
-  return bffCall<AssetCode[]>("/asset-codes", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-}
-
-/** GET /asset-codes/:code — Single asset code */
-export async function fetchAssetCodeByCode(token: string, code: string) {
-  return bffCall<AssetCode>(`/asset-codes/${code}`, {
+  return bffCall<{ assetCodes: AssetCode[] }>("/investments/asset-codes", {
     headers: { Authorization: `Bearer ${token}` },
   });
 }

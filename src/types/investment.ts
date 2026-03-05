@@ -64,10 +64,9 @@ export interface CreateInvestmentPayload {
 }
 
 export interface SellInvestmentPayload {
-  investment_id: string;
+  asset_code: string;
   quantity: number;
   amount: number;
-  sell_price: number;
   date: string;
   description?: string;
 }
