@@ -121,9 +121,9 @@ export function useAssetCodes() {
     (async () => {
       try {
         const result = await fetchAssetCodes(token);
-        const data = result.data as { assetCodes: AssetCode[] };
+        const data = result.data as { asset_codes: AssetCode[] };
         setState({
-          data: data.assetCodes ?? [],
+          data: data.asset_codes ?? [],
           loading: false,
           error: null,
         });

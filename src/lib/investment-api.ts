@@ -83,7 +83,7 @@ export async function sellInvestment(
   token: string,
   payload: SellInvestmentPayload,
 ) {
-  return bffCall<{ soldRecords: unknown[] }>("/investments/sell", {
+  return bffCall<{ sold_records: unknown[] }>("/investments/sell", {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(payload),
@@ -99,7 +99,7 @@ export async function fetchInvestmentSummary(token: string) {
 
 /** GET /investments/asset-codes — List available asset codes */
 export async function fetchAssetCodes(token: string) {
-  return bffCall<{ assetCodes: AssetCode[] }>("/investments/asset-codes", {
+  return bffCall<{ asset_codes: AssetCode[] }>("/investments/asset-codes", {
     headers: { Authorization: `Bearer ${token}` },
   });
 }

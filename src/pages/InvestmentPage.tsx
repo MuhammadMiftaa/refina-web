@@ -7,7 +7,6 @@ import {
   X,
   Sun,
   Moon,
-  ChevronDown,
   DollarSign,
   BarChart3,
   PieChart as PieChartIcon,
@@ -32,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import {
   useInvestmentList,
   useInvestmentSummary,
@@ -537,10 +537,6 @@ function CreateInvestmentModal({
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
-  // Track which field the user last edited so we can auto-calc the other
-  const [_lastEdited, setLastEdited] = useState<"quantity" | "amount" | null>(
-    null,
-  );
 
   // Reset form when modal closes
   useEffect(() => {
@@ -550,7 +546,6 @@ function CreateInvestmentModal({
       setAmount("");
       setDate(new Date().toISOString().slice(0, 10));
       setDescription("");
-      setLastEdited(null);
     }
   }, [open]);
 
@@ -564,24 +559,10 @@ function CreateInvestmentModal({
 
   const handleQuantityChange = (val: string) => {
     setQuantity(val);
-    setLastEdited("quantity");
-    const q = parseFloat(val) || 0;
-    // If amount is already filled, don't overwrite it — price adjusts automatically
-    // If amount is empty but we know the market price, pre-fill amount
-    if (!amount && selectedAsset?.toIDR && q > 0) {
-      setAmount(String(Math.round(q * selectedAsset.toIDR)));
-    }
   };
 
   const handleAmountChange = (val: string) => {
     setAmount(val);
-    setLastEdited("amount");
-    // If quantity is already filled, price adjusts automatically
-    // If quantity is empty but we know the market price, pre-fill quantity
-    const a = parseFloat(val) || 0;
-    if (!quantity && selectedAsset?.toIDR && a > 0) {
-      setQuantity(String(parseFloat((a / selectedAsset.toIDR).toFixed(8))));
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -595,7 +576,6 @@ function CreateInvestmentModal({
       code,
       quantity: qty,
       amount: amt,
-      initial_valuation: pricePerUnit,
       date: new Date(date).toISOString(),
       description: description || undefined,
     };
@@ -604,12 +584,6 @@ function CreateInvestmentModal({
       toast.success("Investment created successfully!");
       onRefetch();
       onClose();
-      setCode("");
-      setQuantity("");
-      setAmount("");
-      setDate(new Date().toISOString().slice(0, 10));
-      setDescription("");
-      setLastEdited(null);
     } catch (err: unknown) {
       const msg =
         err && typeof err === "object" && "message" in err
@@ -645,39 +619,29 @@ function CreateInvestmentModal({
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-6">
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-(--foreground) opacity-80">
-              Asset
-            </label>
-            <div className="relative">
-              <select
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                required
-                className="w-full appearance-none rounded-lg border border-(--border) bg-(--input) px-4 py-2.5 text-sm text-(--foreground) outline-none transition-colors focus:border-(--ring) focus:ring-1 focus:ring-(--ring)"
-              >
-                <option value="">Select asset...</option>
-                {assetCodes.data?.map((a) => (
-                  <option key={a.code} value={a.code}>
-                    {a.code} — {a.name}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                size={14}
-                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-(--muted-foreground)"
-              />
+          <SearchableSelect
+            label="Asset"
+            value={code}
+            onChange={setCode}
+            options={
+              assetCodes.data?.map((a) => ({
+                value: a.code,
+                label: `${a.code} — ${a.name}`,
+              })) ?? []
+            }
+            placeholder="Select asset..."
+            searchPlaceholder="Search asset..."
+            required
+          />
+          {selectedAsset && selectedAsset.toIDR != null && (
+            <div className="text-[11px] text-(--muted-foreground) -mt-2">
+              Current market price:{" "}
+              <span className="font-mono text-gold-400">
+                {fmtCurrency(selectedAsset.toIDR ?? 0)}
+              </span>
+              /{selectedAsset.unit ?? "unit"}
             </div>
-            {selectedAsset && (
-              <div className="text-[11px] text-(--muted-foreground)">
-                Current market price:{" "}
-                <span className="font-mono text-gold-400">
-                  {fmtCurrency(selectedAsset.toIDR ?? 0)}
-                </span>
-                /{selectedAsset.unit ?? "unit"}
-              </div>
-            )}
-          </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <Input
@@ -1177,14 +1141,14 @@ export function InvestmentPage() {
             label="Realized Gain"
             value={
               summary.data
-                ? `${summary.data.total_realized_gain >= 0 ? "+" : ""}${fmtCurrency(summary.data.total_realized_gain, true)}`
+                ? `${summary.data.total_realized_gain >= 0 ? "+" : ""}${fmtCurrency(summary.data.total_realized_gain ?? 0, true)}`
                 : "—"
             }
             icon={<Coins size={14} className="text-blue-400" />}
             accentColor="bg-blue-400/10"
             subValue={
               summary.data
-                ? `From ${fmtCurrency(summary.data.total_sold_amount, true)} sold`
+                ? `From ${fmtCurrency(summary.data.total_sold_amount ?? 0, true)} sold`
                 : undefined
             }
             subColor="text-(--muted-foreground)"

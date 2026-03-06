@@ -58,7 +58,6 @@ export interface CreateInvestmentPayload {
   code: string;
   quantity: number;
   amount: number;
-  initial_valuation: number;
   date: string;
   description?: string;
 }
