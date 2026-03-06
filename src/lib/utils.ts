@@ -26,3 +26,17 @@ export function parseJwt<T = Record<string, unknown>>(token: string): T | null {
     return null;
   }
 }
+
+/**
+ * Generate a URL-friendly slug from a string
+ * e.g. "Seabank (Bank Digital SeaGroup)" -> "seabank-bank-digital-seagroup"
+ */
+export function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ") // replace non-alphanumeric (except spaces & hyphens) with space
+    .trim()
+    .replace(/\s+/g, "-")          // replace whitespace runs with single hyphen
+    .replace(/-+/g, "-")           // collapse multiple hyphens
+    .replace(/^-|-$/g, "");        // strip leading/trailing hyphens
+}

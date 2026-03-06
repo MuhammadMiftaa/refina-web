@@ -13,7 +13,7 @@ import {
   Moon,
   AlertTriangle,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, slugify } from "@/lib/utils";
 import { fmtShort } from "@/lib/dashboard-helpers";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -38,6 +38,7 @@ import type {
 import type { WalletType } from "@/types/wallet";
 import toast from "react-hot-toast";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { ASSET_URL } from "@/lib/url";
 
 // ════════════════════════════════════════════
 // HELPERS
@@ -108,7 +109,7 @@ function WalletCard({
         <div className="mb-4 flex items-start justify-between">
           <div className="flex items-center gap-3">
             {/* Bank Logo Placeholder - Initials */}
-            <div
+            {/* <div
               className="flex h-12 w-12 items-center justify-center rounded-xl text-sm font-bold text-black"
               style={{
                 background:
@@ -117,10 +118,11 @@ function WalletCard({
               }}
             >
               {getWalletInitials(wallet.name)}
-            </div>
+            </div> */}
+            <img className="h-12 w-12 rounded object-contain" src={`${ASSET_URL.WalletType}${slugify(wallet.wallet_type_detail?.name ?? "")}.png`} alt={wallet.name} />
             <div>
               <div className="text-sm font-bold text-(--foreground)">
-                {wallet.name}
+                {wallet.wallet_type_detail?.name}
               </div>
               <div className="flex items-center gap-1.5 text-[11px] text-(--muted-foreground)">
                 {getWalletTypeIcon(wallet.wallet_type_detail?.type ?? "bank")}
