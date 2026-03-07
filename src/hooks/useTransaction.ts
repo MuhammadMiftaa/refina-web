@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import type {
   TransactionListResponse,
   TransactionListParams,
@@ -17,17 +17,62 @@ interface AsyncState<T> {
   error: string | null;
 }
 
-export function useTransactionList(params: TransactionListParams) {
+/** Cursor info cached per page number */
+interface CursorInfo {
+  cursor: string;
+  cursor_amount: number;
+  cursor_date: string;
+}
+
+/**
+ * Bridges page-number UI with cursor-based BFF API.
+ *
+ * `page` is the 1-based page number used by the UI.
+ * Internally, cursor data is cached per-page so that navigating
+ * forward/backward works without re-fetching intermediate pages.
+ *
+ * When filters, sort, search, or page_size change the cursor cache
+ * is reset so the user starts from page 1 with a fresh cursor chain.
+ */
+export function useTransactionList(
+  params: TransactionListParams & { page?: number },
+) {
   const { token } = useAuth();
+  const page = params.page ?? 1;
+
   const [state, setState] = useState<AsyncState<TransactionListResponse>>({
     data: null,
     loading: true,
     error: null,
   });
 
+  // Cache: pageNumber → cursor info for that page
+  const cursorCacheRef = useRef<Map<number, CursorInfo>>(new Map());
+
   const fetchRef = useRef(0);
   const paramsRef = useRef(params);
   paramsRef.current = params;
+  const pageRef = useRef(page);
+  pageRef.current = page;
+
+  // Reset cursor cache when anything other than page changes
+  const filterKey = JSON.stringify({
+    page_size: params.page_size,
+    sort_by: params.sort_by,
+    sort_order: params.sort_order,
+    search: params.search,
+    wallet_id: params.wallet_id,
+    category_id: params.category_id,
+    category_type: params.category_type,
+    date_from: params.date_from,
+    date_to: params.date_to,
+  });
+
+  const prevFilterKeyRef = useRef(filterKey);
+  if (prevFilterKeyRef.current !== filterKey) {
+    prevFilterKeyRef.current = filterKey;
+    cursorCacheRef.current = new Map();
+  }
 
   const refetch = useCallback(async () => {
     if (!token) return;
@@ -35,14 +80,32 @@ export function useTransactionList(params: TransactionListParams) {
     const id = ++fetchRef.current;
     setState((s) => ({ ...s, loading: true, error: null }));
 
+    const currentPage = pageRef.current;
+    const { page: _page, ...apiParams } = paramsRef.current;
+
+    // Look up cached cursor for the requested page
+    const cached = cursorCacheRef.current.get(currentPage);
+    if (cached && currentPage > 1) {
+      apiParams.cursor = cached.cursor;
+      apiParams.cursor_amount = cached.cursor_amount;
+      apiParams.cursor_date = cached.cursor_date;
+    }
+
     try {
-      const result = await fetchTransactions(token, paramsRef.current);
+      const result = await fetchTransactions(token, apiParams);
       if (id === fetchRef.current) {
-        setState({
-          data: result.data as TransactionListResponse,
-          loading: false,
-          error: null,
-        });
+        const data = result.data as TransactionListResponse;
+
+        // Cache cursor for the NEXT page
+        if (data.has_next && data.next_cursor) {
+          cursorCacheRef.current.set(currentPage + 1, {
+            cursor: data.next_cursor,
+            cursor_amount: data.next_cursor_amount,
+            cursor_date: data.next_cursor_date,
+          });
+        }
+
+        setState({ data, loading: false, error: null });
       }
     } catch (err: unknown) {
       if (id === fetchRef.current) {
@@ -68,13 +131,17 @@ export function useTransactionList(params: TransactionListParams) {
     params.category_type,
     params.date_from,
     params.date_to,
-    params.cursor,
-    params.cursor_amount,
-    params.cursor_date,
     refetch,
   ]);
 
-  return { ...state, refetch };
+  // Highest page number we can navigate to (cursor is cached or it's page 1)
+  const maxCachedPage = useMemo(() => {
+    if (cursorCacheRef.current.size === 0) return 1;
+    return Math.max(1, ...Array.from(cursorCacheRef.current.keys()));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.data]); // recompute whenever data changes (new cursors cached)
+
+  return { ...state, refetch, maxCachedPage };
 }
 
 export function useCategories() {

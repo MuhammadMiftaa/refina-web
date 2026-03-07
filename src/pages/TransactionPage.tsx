@@ -1401,6 +1401,8 @@ function Pagination({
   totalPages,
   total,
   pageSize,
+  maxCachedPage,
+  hasNext,
   onPageChange,
   onPageSizeChange,
 }: {
@@ -1408,9 +1410,14 @@ function Pagination({
   totalPages: number;
   total: number;
   pageSize: number;
+  maxCachedPage: number;
+  hasNext: boolean;
   onPageChange: (p: number) => void;
   onPageSizeChange: (s: number) => void;
 }) {
+  const canGoNext = hasNext && page < totalPages;
+  const canGoPrev = page > 1;
+
   return (
     <div className="flex flex-col gap-3 border-t border-(--border) px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-2 text-[11px] text-(--muted-foreground)">
@@ -1433,14 +1440,14 @@ function Pagination({
         <div className="flex items-center gap-1">
           <button
             onClick={() => onPageChange(1)}
-            disabled={page === 1}
+            disabled={!canGoPrev}
             className="rounded-md border border-(--border) p-1.5 text-(--muted-foreground) transition hover:text-(--foreground) disabled:opacity-30"
           >
             <ChevronsLeft size={14} />
           </button>
           <button
             onClick={() => onPageChange(page - 1)}
-            disabled={page === 1}
+            disabled={!canGoPrev}
             className="rounded-md border border-(--border) p-1.5 text-(--muted-foreground) transition hover:text-(--foreground) disabled:opacity-30"
           >
             <ChevronLeft size={14} />
@@ -1451,15 +1458,22 @@ function Pagination({
             else if (page <= 3) pageNum = i + 1;
             else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
             else pageNum = page - 2 + i;
+
+            // Only allow navigating to pages whose cursor is cached (or page 1)
+            const isReachable = pageNum === 1 || pageNum <= maxCachedPage;
+
             return (
               <button
                 key={pageNum}
-                onClick={() => onPageChange(pageNum)}
+                onClick={() => isReachable && onPageChange(pageNum)}
+                disabled={!isReachable}
                 className={cn(
                   "flex h-7 w-7 items-center justify-center rounded-md text-[11px] font-semibold transition",
                   page === pageNum
                     ? "border border-gold-400/40 bg-gold-400/10 text-gold-400"
-                    : "border border-(--border) text-(--muted-foreground) hover:text-(--foreground)",
+                    : isReachable
+                      ? "border border-(--border) text-(--muted-foreground) hover:text-(--foreground)"
+                      : "border border-(--border) text-(--muted-foreground) opacity-30",
                 )}
               >
                 {pageNum}
@@ -1468,14 +1482,21 @@ function Pagination({
           })}
           <button
             onClick={() => onPageChange(page + 1)}
-            disabled={page === totalPages}
+            disabled={!canGoNext}
             className="rounded-md border border-(--border) p-1.5 text-(--muted-foreground) transition hover:text-(--foreground) disabled:opacity-30"
           >
             <ChevronRight size={14} />
           </button>
           <button
-            onClick={() => onPageChange(totalPages)}
-            disabled={page === totalPages}
+            onClick={() => {
+              // Jump to last page only if we've cached it, otherwise go to next
+              if (totalPages <= maxCachedPage) {
+                onPageChange(totalPages);
+              } else if (canGoNext) {
+                onPageChange(page + 1);
+              }
+            }}
+            disabled={page === totalPages || !canGoNext}
             className="rounded-md border border-(--border) p-1.5 text-(--muted-foreground) transition hover:text-(--foreground) disabled:opacity-30"
           >
             <ChevronsRight size={14} />
@@ -1504,7 +1525,7 @@ export function TransactionPage() {
     useState<Transaction | null>(null);
 
   const txnList = useTransactionList({
-    page,
+    page: pageSize === -1 ? 1 : page,
     page_size: pageSize,
     sort_by: sortBy,
     sort_order: sortOrder,
@@ -1703,6 +1724,8 @@ export function TransactionPage() {
               }
               total={txnList.data.total}
               pageSize={pageSize}
+              maxCachedPage={txnList.maxCachedPage}
+              hasNext={txnList.data.has_next}
               onPageChange={setPage}
               onPageSizeChange={handlePageSizeChange}
             />
@@ -1747,6 +1770,8 @@ export function TransactionPage() {
               }
               total={txnList.data.total}
               pageSize={pageSize}
+              maxCachedPage={txnList.maxCachedPage}
+              hasNext={txnList.data.has_next}
               onPageChange={setPage}
               onPageSizeChange={handlePageSizeChange}
             />

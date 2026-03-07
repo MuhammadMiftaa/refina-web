@@ -121,7 +121,6 @@ export async function fetchTransactions(
   params: TransactionListParams,
 ) {
   const query = new URLSearchParams();
-  if (params.page) query.set("page", String(params.page));
   if (params.page_size) query.set("page_size", String(params.page_size));
   if (params.sort_by) query.set("sort_by", params.sort_by);
   if (params.sort_order) query.set("sort_order", params.sort_order);

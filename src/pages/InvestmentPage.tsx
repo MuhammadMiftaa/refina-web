@@ -579,6 +579,10 @@ function CreateInvestmentModal({
       toast.error("Please select a wallet");
       return;
     }
+    if ((wallets.data?.find((w) => w.id === walletId)?.balance ?? 0) < amt) {
+      toast.error("Insufficient balance in selected wallet");
+      return;
+    }
     setLoading(true);
     const payload: CreateInvestmentPayload = {
       code,
