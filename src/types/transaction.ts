@@ -58,6 +58,7 @@ export interface TransactionListResponse {
 }
 
 export interface TransactionListParams {
+  page?: number;
   page_size?: number;
   sort_by?: string;
   sort_order?: "asc" | "desc";

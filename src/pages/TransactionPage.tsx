@@ -6,7 +6,10 @@ import {
   Search,
   X,
   Plus,
+  ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
@@ -1391,19 +1394,21 @@ function AddTransactionModal({
 // PAGINATION
 // ════════════════════════════════════════════
 
-const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100, -1] as const;
 
 function Pagination({
-  hasNext,
+  page,
+  totalPages,
   total,
   pageSize,
-  onLoadMore,
+  onPageChange,
   onPageSizeChange,
 }: {
-  hasNext: boolean;
+  page: number;
+  totalPages: number;
   total: number;
   pageSize: number;
-  onLoadMore: () => void;
+  onPageChange: (p: number) => void;
   onPageSizeChange: (s: number) => void;
 }) {
   return (
@@ -1417,21 +1422,63 @@ function Pagination({
         >
           {PAGE_SIZE_OPTIONS.map((s) => (
             <option key={s} value={s}>
-              {s}
+              {s === -1 ? "All" : s}
             </option>
           ))}
         </select>
         <span>of {total} entries</span>
       </div>
 
-      {hasNext && (
+      {pageSize !== -1 && totalPages > 1 && (
         <div className="flex items-center gap-1">
           <button
-            onClick={onLoadMore}
-            className="flex items-center gap-1.5 rounded-md border border-(--border) px-3 py-1.5 text-[11px] font-semibold text-(--muted-foreground) transition hover:border-gold-400/30 hover:text-(--foreground)"
+            onClick={() => onPageChange(1)}
+            disabled={page === 1}
+            className="rounded-md border border-(--border) p-1.5 text-(--muted-foreground) transition hover:text-(--foreground) disabled:opacity-30"
           >
-            Load More
+            <ChevronsLeft size={14} />
+          </button>
+          <button
+            onClick={() => onPageChange(page - 1)}
+            disabled={page === 1}
+            className="rounded-md border border-(--border) p-1.5 text-(--muted-foreground) transition hover:text-(--foreground) disabled:opacity-30"
+          >
+            <ChevronLeft size={14} />
+          </button>
+          {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+            let pageNum: number;
+            if (totalPages <= 5) pageNum = i + 1;
+            else if (page <= 3) pageNum = i + 1;
+            else if (page >= totalPages - 2) pageNum = totalPages - 4 + i;
+            else pageNum = page - 2 + i;
+            return (
+              <button
+                key={pageNum}
+                onClick={() => onPageChange(pageNum)}
+                className={cn(
+                  "flex h-7 w-7 items-center justify-center rounded-md text-[11px] font-semibold transition",
+                  page === pageNum
+                    ? "border border-gold-400/40 bg-gold-400/10 text-gold-400"
+                    : "border border-(--border) text-(--muted-foreground) hover:text-(--foreground)",
+                )}
+              >
+                {pageNum}
+              </button>
+            );
+          })}
+          <button
+            onClick={() => onPageChange(page + 1)}
+            disabled={page === totalPages}
+            className="rounded-md border border-(--border) p-1.5 text-(--muted-foreground) transition hover:text-(--foreground) disabled:opacity-30"
+          >
             <ChevronRight size={14} />
+          </button>
+          <button
+            onClick={() => onPageChange(totalPages)}
+            disabled={page === totalPages}
+            className="rounded-md border border-(--border) p-1.5 text-(--muted-foreground) transition hover:text-(--foreground) disabled:opacity-30"
+          >
+            <ChevronsRight size={14} />
           </button>
         </div>
       )}
@@ -1446,35 +1493,23 @@ function Pagination({
 export function TransactionPage() {
   const { theme, toggleTheme } = useTheme();
 
+  const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [sortBy, setSortBy] = useState("transaction_date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchInput, setSearchInput] = useState("");
-  const [cursor, setCursor] = useState<string | undefined>(undefined);
-  const [cursorAmount, setCursorAmount] = useState<number | undefined>(
-    undefined,
-  );
-  const [cursorDate, setCursorDate] = useState<string | undefined>(undefined);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [detailTransaction, setDetailTransaction] =
     useState<Transaction | null>(null);
 
   const txnList = useTransactionList({
+    page,
     page_size: pageSize,
     sort_by: sortBy,
     sort_order: sortOrder,
     search: searchQuery,
-    cursor,
-    cursor_amount: cursorAmount,
-    cursor_date: cursorDate,
   });
-
-  const resetCursor = () => {
-    setCursor(undefined);
-    setCursorAmount(undefined);
-    setCursorDate(undefined);
-  };
 
   const handleSort = (field: string) => {
     if (sortBy === field) setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
@@ -1482,12 +1517,12 @@ export function TransactionPage() {
       setSortBy(field);
       setSortOrder("desc");
     }
-    resetCursor();
+    setPage(1);
   };
 
   const handleSearch = () => {
     setSearchQuery(searchInput);
-    resetCursor();
+    setPage(1);
   };
   const handleSearchKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") handleSearch();
@@ -1495,18 +1530,11 @@ export function TransactionPage() {
   const clearSearch = () => {
     setSearchInput("");
     setSearchQuery("");
-    resetCursor();
+    setPage(1);
   };
   const handlePageSizeChange = (size: number) => {
     setPageSize(size);
-    resetCursor();
-  };
-  const handleLoadMore = () => {
-    if (txnList.data) {
-      setCursor(txnList.data.next_cursor);
-      setCursorAmount(txnList.data.next_cursor_amount);
-      setCursorDate(txnList.data.next_cursor_date);
-    }
+    setPage(1);
   };
 
   return (
@@ -1669,10 +1697,13 @@ export function TransactionPage() {
           </div>
           {txnList.data && (
             <Pagination
-              hasNext={txnList.data.has_next}
+              page={page}
+              totalPages={
+                pageSize === -1 ? 1 : Math.ceil(txnList.data.total / pageSize)
+              }
               total={txnList.data.total}
               pageSize={pageSize}
-              onLoadMore={handleLoadMore}
+              onPageChange={setPage}
               onPageSizeChange={handlePageSizeChange}
             />
           )}
@@ -1710,10 +1741,13 @@ export function TransactionPage() {
           )}
           {txnList.data && (
             <Pagination
-              hasNext={txnList.data.has_next}
+              page={page}
+              totalPages={
+                pageSize === -1 ? 1 : Math.ceil(txnList.data.total / pageSize)
+              }
               total={txnList.data.total}
               pageSize={pageSize}
-              onLoadMore={handleLoadMore}
+              onPageChange={setPage}
               onPageSizeChange={handlePageSizeChange}
             />
           )}

@@ -282,8 +282,21 @@ export function DashboardPage() {
   const netWorth = useNetWorthComposition();
 
   // ── Derived: latest financial summary ──
+  // Pick the last entry that actually has transaction data (income_now or total_transactions).
+  // The very last period may be the "current" month with no data yet.
   const latest: FinancialSummary | null = useMemo(() => {
     if (!financialSummary.data?.length) return null;
+    for (let i = financialSummary.data.length - 1; i >= 0; i--) {
+      const entry = financialSummary.data[i];
+      if (
+        entry.total_transactions > 0 ||
+        entry.income_now > 0 ||
+        entry.expense_now > 0
+      ) {
+        return entry;
+      }
+    }
+    // fallback to last entry if all are empty
     return financialSummary.data[financialSummary.data.length - 1];
   }, [financialSummary.data]);
 
@@ -421,7 +434,7 @@ export function DashboardPage() {
           <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
             <KPICard
               label="Total Income"
-              value={fmtShort(latest.income_now)}
+              value={fmtShort(latest.income_now ?? 0)}
               growth={latest.income_growth_pct}
               accent={CHART.green}
               sub={
@@ -432,7 +445,7 @@ export function DashboardPage() {
             />
             <KPICard
               label="Total Expense"
-              value={fmtShort(latest.expense_now)}
+              value={fmtShort(latest.expense_now ?? 0)}
               growth={latest.expense_growth_pct}
               accent={CHART.red}
               sub={
@@ -443,14 +456,14 @@ export function DashboardPage() {
             />
             <KPICard
               label="Net Profit"
-              value={fmtShort(latest.profit_now)}
+              value={fmtShort(latest.profit_now ?? 0)}
               growth={latest.profit_growth_pct}
               accent={CHART.gold}
-              sub={`Savings: ${latest.savings_rate?.toFixed(1) ?? 0}%`}
+              sub={`Savings: ${latest.savings_rate?.toFixed(1) ?? "0"}%`}
             />
             <KPICard
               label="Balance"
-              value={fmtShort(latest.balance_now)}
+              value={fmtShort(latest.balance_now ?? 0)}
               growth={latest.balance_growth_pct}
               accent={CHART.amber}
               sub={

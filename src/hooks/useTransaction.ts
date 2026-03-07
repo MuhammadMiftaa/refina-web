@@ -58,6 +58,7 @@ export function useTransactionList(params: TransactionListParams) {
   useEffect(() => {
     refetch();
   }, [
+    params.page,
     params.page_size,
     params.sort_by,
     params.sort_order,

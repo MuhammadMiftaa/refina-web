@@ -18,11 +18,7 @@ import { fmtShort } from "@/lib/dashboard-helpers";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
-import {
-  useWalletList,
-  useWalletTypes,
-  useWalletSummary,
-} from "@/hooks/useWallet";
+import { useWalletList, useWalletTypes } from "@/hooks/useWallet";
 import {
   createWallet,
   updateWallet,
@@ -119,7 +115,11 @@ function WalletCard({
             >
               {getWalletInitials(wallet.name)}
             </div> */}
-            <img className="h-12 w-12 rounded object-contain" src={`${ASSET_URL.WalletType}${slugify(wallet.wallet_type_detail?.name ?? "")}.png`} alt={wallet.name} />
+            <img
+              className="h-12 w-12 rounded object-contain"
+              src={`${ASSET_URL.WalletType}${slugify(wallet.wallet_type_detail?.name ?? "")}.png`}
+              alt={wallet.name}
+            />
             <div>
               <div className="text-sm font-bold text-(--foreground)">
                 {wallet.wallet_type_detail?.name}
@@ -473,7 +473,6 @@ export function WalletPage() {
   const { token } = useAuth();
   const walletList = useWalletList();
   const walletTypes = useWalletTypes();
-  const walletSummary = useWalletSummary();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("");
@@ -512,6 +511,23 @@ export function WalletPage() {
     return list;
   }, [walletList.data, searchQuery, filterType]);
 
+  // Compute summary from wallet list data, reactive to filterType
+  const computedSummary = useMemo(() => {
+    if (!walletList.data) return null;
+    let list = walletList.data;
+    if (filterType) {
+      list = list.filter((w) => w.wallet_type_detail?.type === filterType);
+    }
+    return {
+      total_wallets: list.length,
+      total_balance: list.reduce((sum, w) => sum + (w.balance ?? 0), 0),
+      total_transactions: list.reduce(
+        (sum, w) => sum + (w.transaction_count ?? 0),
+        0,
+      ),
+    };
+  }, [walletList.data, filterType]);
+
   const handleCreateOrEdit = async (
     data: CreateWalletPayload | UpdateWalletPayload,
     isEdit: boolean,
@@ -528,7 +544,6 @@ export function WalletPage() {
       setFormOpen(false);
       setEditWallet(null);
       walletList.refetch();
-      walletSummary.refetch();
     } catch (err: any) {
       toast.error(err.message || "Failed to save wallet");
     }
@@ -541,7 +556,6 @@ export function WalletPage() {
       toast.success(`"${deleteTarget.name}" deleted successfully!`);
       setDeleteTarget(null);
       walletList.refetch();
-      walletSummary.refetch();
     } catch (err: any) {
       toast.error(err.message || "Failed to delete wallet");
     }
@@ -585,29 +599,29 @@ export function WalletPage() {
       <div className="mx-auto max-w-350 p-3 sm:p-5">
         {/* Summary Cards */}
         <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {walletSummary.loading ? (
+          {walletList.loading ? (
             <>
               <Skeleton className="h-20" />
               <Skeleton className="h-20" />
               <Skeleton className="h-20" />
             </>
-          ) : walletSummary.data ? (
+          ) : computedSummary ? (
             <>
               <SummaryCard
                 label="Total Wallets"
-                value={String(walletSummary.data.total_wallets)}
+                value={String(computedSummary.total_wallets)}
                 icon={<Wallet size={18} />}
                 accent="#daa520"
               />
               <SummaryCard
                 label="Total Balance"
-                value={fmtShort(walletSummary.data.total_balance)}
+                value={fmtShort(computedSummary.total_balance)}
                 icon={<Banknote size={18} />}
                 accent="#10b981"
               />
               <SummaryCard
                 label="Total Transactions"
-                value={String(walletSummary.data.total_transactions)}
+                value={String(computedSummary.total_transactions)}
                 icon={<ArrowLeftRight size={18} />}
                 accent="#3b82f6"
               />
