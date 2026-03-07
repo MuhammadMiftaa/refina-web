@@ -6,6 +6,7 @@ import React, {
   useCallback,
 } from "react";
 import { parseJwt } from "@/lib/utils";
+import { useDemo } from "@/contexts/DemoContext";
 import type { JwtPayload } from "@/types/auth";
 
 // ============================================
@@ -38,6 +39,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setTokenState] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { isDemo, stopDemo } = useDemo();
 
   const processToken = useCallback((jwt: string | null) => {
     if (!jwt) {
@@ -103,7 +105,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     processToken(null);
-  }, [processToken]);
+    if (isDemo) stopDemo();
+  }, [processToken, isDemo, stopDemo]);
 
   return (
     <AuthContext.Provider value={{ user, token, isLoading, setToken, logout }}>

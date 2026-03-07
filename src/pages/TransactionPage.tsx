@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDemo } from "@/contexts/DemoContext";
 import { useTransactionList, useCategories } from "@/hooks/useTransaction";
 import { useWalletList } from "@/hooks/useWallet";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -434,6 +435,7 @@ function TransactionDetailModal({
   onRefetch: () => void;
 }) {
   const { token } = useAuth();
+  const { isDemo } = useDemo();
   const categories = useCategories();
   const wallets = useWalletList();
 
@@ -492,6 +494,10 @@ function TransactionDetailModal({
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isDemo) {
+      toast("Demo mode — data is read-only", { icon: "🔒" });
+      return;
+    }
     if (!transaction || !token) return;
     setLoading(true);
     try {
@@ -520,6 +526,10 @@ function TransactionDetailModal({
   };
 
   const handleDelete = async () => {
+    if (isDemo) {
+      toast("Demo mode — data is read-only", { icon: "🔒" });
+      return;
+    }
     if (!transaction || !token) return;
     setLoading(true);
     try {
@@ -997,6 +1007,7 @@ function AddTransactionModal({
   onRefetch: () => void;
 }) {
   const { token } = useAuth();
+  const { isDemo } = useDemo();
   const [tab, setTab] = useState<TransactionFormTab>("expense");
   const categories = useCategories();
   const wallets = useWalletList();
@@ -1042,6 +1053,10 @@ function AddTransactionModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isDemo) {
+      toast("Demo mode — data is read-only", { icon: "🔒" });
+      return;
+    }
     if (!token) return;
     setLoading(true);
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDemo } from "@/contexts/DemoContext";
 import {
   fetchFinancialSummary,
   fetchUserBalance,
@@ -7,6 +8,13 @@ import {
   fetchNetWorthComposition,
   fetchUserWallets,
 } from "@/lib/dashboard-api";
+import {
+  DUMMY_DASHBOARD_WALLETS,
+  getDummyFinancialSummary,
+  getDummyBalanceSnapshots,
+  getDummyTransactionCategories,
+  getDummyNetWorthComposition,
+} from "@/lib/dummy-data";
 import type {
   FinancialSummary,
   BalanceSnapshot,
@@ -35,6 +43,7 @@ export interface GlobalFilter {
 
 export function useWallets() {
   const { token } = useAuth();
+  const { isDemo } = useDemo();
   const [state, setState] = useState<AsyncState<Wallet[]>>({
     data: null,
     loading: true,
@@ -42,6 +51,10 @@ export function useWallets() {
   });
 
   useEffect(() => {
+    if (isDemo) {
+      setState({ data: DUMMY_DASHBOARD_WALLETS, loading: false, error: null });
+      return;
+    }
     if (!token) return;
     setState((s) => ({ ...s, loading: true, error: null }));
     fetchUserWallets(token)
@@ -49,7 +62,7 @@ export function useWallets() {
       .catch((err) =>
         setState({ data: null, loading: false, error: err.message }),
       );
-  }, [token]);
+  }, [token, isDemo]);
 
   return state;
 }
@@ -58,6 +71,7 @@ export function useWallets() {
 
 export function useFinancialSummary(filter: GlobalFilter) {
   const { token } = useAuth();
+  const { isDemo } = useDemo();
   const [state, setState] = useState<AsyncState<FinancialSummary[]>>({
     data: null,
     loading: true,
@@ -67,6 +81,14 @@ export function useFinancialSummary(filter: GlobalFilter) {
   const fetchRef = useRef(0);
 
   const refetch = useCallback(() => {
+    if (isDemo) {
+      setState({
+        data: getDummyFinancialSummary(),
+        loading: false,
+        error: null,
+      });
+      return;
+    }
     if (!token) return;
     const id = ++fetchRef.current;
     setState((s) => ({ ...s, loading: true, error: null }));
@@ -82,7 +104,7 @@ export function useFinancialSummary(filter: GlobalFilter) {
         if (id === fetchRef.current)
           setState({ data: null, loading: false, error: err.message });
       });
-  }, [token, filter.walletID, filter.range]);
+  }, [token, filter.walletID, filter.range, isDemo]);
 
   useEffect(() => {
     refetch();
@@ -98,6 +120,7 @@ export function useBalance(
   aggregation: "daily" | "weekly" | "monthly",
 ) {
   const { token } = useAuth();
+  const { isDemo } = useDemo();
   const [state, setState] = useState<AsyncState<BalanceSnapshot[]>>({
     data: null,
     loading: true,
@@ -107,6 +130,14 @@ export function useBalance(
   const fetchRef = useRef(0);
 
   const refetch = useCallback(() => {
+    if (isDemo) {
+      setState({
+        data: getDummyBalanceSnapshots(aggregation),
+        loading: false,
+        error: null,
+      });
+      return;
+    }
     if (!token) return;
     const id = ++fetchRef.current;
     setState((s) => ({ ...s, loading: true, error: null }));
@@ -123,7 +154,7 @@ export function useBalance(
         if (id === fetchRef.current)
           setState({ data: null, loading: false, error: err.message });
       });
-  }, [token, filter.walletID, filter.range, aggregation]);
+  }, [token, filter.walletID, filter.range, aggregation, isDemo]);
 
   useEffect(() => {
     refetch();
@@ -139,6 +170,7 @@ export function useTransactions(
   categoryType: "expense" | "income",
 ) {
   const { token } = useAuth();
+  const { isDemo } = useDemo();
   const [state, setState] = useState<AsyncState<TransactionCategory[]>>({
     data: null,
     loading: true,
@@ -148,6 +180,14 @@ export function useTransactions(
   const fetchRef = useRef(0);
 
   const refetch = useCallback(() => {
+    if (isDemo) {
+      setState({
+        data: getDummyTransactionCategories(categoryType),
+        loading: false,
+        error: null,
+      });
+      return;
+    }
     if (!token) return;
     const id = ++fetchRef.current;
     setState((s) => ({ ...s, loading: true, error: null }));
@@ -172,7 +212,7 @@ export function useTransactions(
         if (id === fetchRef.current)
           setState({ data: null, loading: false, error: err.message });
       });
-  }, [token, filter.walletID, filter.range, categoryType]);
+  }, [token, filter.walletID, filter.range, categoryType, isDemo]);
 
   useEffect(() => {
     refetch();
@@ -185,6 +225,7 @@ export function useTransactions(
 
 export function useNetWorthComposition() {
   const { token } = useAuth();
+  const { isDemo } = useDemo();
   const [state, setState] = useState<AsyncState<NetWorthComposition>>({
     data: null,
     loading: true,
@@ -194,6 +235,14 @@ export function useNetWorthComposition() {
   const fetchRef = useRef(0);
 
   const refetch = useCallback(() => {
+    if (isDemo) {
+      setState({
+        data: getDummyNetWorthComposition(),
+        loading: false,
+        error: null,
+      });
+      return;
+    }
     if (!token) return;
     const id = ++fetchRef.current;
     setState((s) => ({ ...s, loading: true, error: null }));
@@ -206,7 +255,7 @@ export function useNetWorthComposition() {
         if (id === fetchRef.current)
           setState({ data: null, loading: false, error: err.message });
       });
-  }, [token]);
+  }, [token, isDemo]);
 
   useEffect(() => {
     refetch();

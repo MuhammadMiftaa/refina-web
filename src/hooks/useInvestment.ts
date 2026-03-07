@@ -11,6 +11,12 @@ import {
   fetchAssetCodes,
 } from "@/lib/investment-api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDemo } from "@/contexts/DemoContext";
+import {
+  getDummyInvestmentList,
+  getDummyInvestmentSummary,
+  DUMMY_ASSET_CODES,
+} from "@/lib/dummy-data";
 
 interface AsyncState<T> {
   data: T | null;
@@ -20,6 +26,7 @@ interface AsyncState<T> {
 
 export function useInvestmentList(params: InvestmentListParams) {
   const { token } = useAuth();
+  const { isDemo } = useDemo();
   const [state, setState] = useState<AsyncState<InvestmentListResponse>>({
     data: null,
     loading: true,
@@ -31,6 +38,11 @@ export function useInvestmentList(params: InvestmentListParams) {
   paramsRef.current = params;
 
   const refetch = useCallback(async () => {
+    if (isDemo) {
+      const data = getDummyInvestmentList(paramsRef.current);
+      setState({ data, loading: false, error: null });
+      return;
+    }
     if (!token) return;
 
     const id = ++fetchRef.current;
@@ -54,7 +66,7 @@ export function useInvestmentList(params: InvestmentListParams) {
         setState({ data: null, loading: false, error: message });
       }
     }
-  }, [token]);
+  }, [token, isDemo]);
 
   useEffect(() => {
     refetch();
@@ -73,6 +85,7 @@ export function useInvestmentList(params: InvestmentListParams) {
 
 export function useInvestmentSummary() {
   const { token } = useAuth();
+  const { isDemo } = useDemo();
   const [state, setState] = useState<AsyncState<InvestmentSummary>>({
     data: null,
     loading: true,
@@ -80,6 +93,14 @@ export function useInvestmentSummary() {
   });
 
   const refetch = useCallback(async () => {
+    if (isDemo) {
+      setState({
+        data: getDummyInvestmentSummary(),
+        loading: false,
+        error: null,
+      });
+      return;
+    }
     if (!token) return;
 
     setState((s) => ({ ...s, loading: true, error: null }));
@@ -98,7 +119,7 @@ export function useInvestmentSummary() {
           : "Failed to fetch investment summary";
       setState({ data: null, loading: false, error: message });
     }
-  }, [token]);
+  }, [token, isDemo]);
 
   useEffect(() => {
     refetch();
@@ -109,6 +130,7 @@ export function useInvestmentSummary() {
 
 export function useAssetCodes() {
   const { token } = useAuth();
+  const { isDemo } = useDemo();
   const [state, setState] = useState<AsyncState<AssetCode[]>>({
     data: null,
     loading: true,
@@ -116,6 +138,10 @@ export function useAssetCodes() {
   });
 
   useEffect(() => {
+    if (isDemo) {
+      setState({ data: DUMMY_ASSET_CODES, loading: false, error: null });
+      return;
+    }
     if (!token) return;
 
     (async () => {
@@ -135,7 +161,7 @@ export function useAssetCodes() {
         setState({ data: null, loading: false, error: message });
       }
     })();
-  }, [token]);
+  }, [token, isDemo]);
 
   return state;
 }

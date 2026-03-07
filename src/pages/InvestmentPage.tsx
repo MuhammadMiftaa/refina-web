@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDemo } from "@/contexts/DemoContext";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import {
   useInvestmentList,
@@ -49,6 +50,13 @@ import type {
   CreateInvestmentPayload,
   SellInvestmentPayload,
 } from "@/types/investment";
+import {
+  getUnitOptions,
+  convertToBaseUnit,
+  convertFromBaseUnit,
+  getConversionInfo,
+} from "@/lib/investment-helpers";
+import type { SelectOption } from "@/components/ui/SearchableSelect";
 import toast from "react-hot-toast";
 
 // ════════════════════════════════════════════
@@ -531,6 +539,7 @@ function CreateInvestmentModal({
   onRefetch: () => void;
 }) {
   const { token } = useAuth();
+  const { isDemo } = useDemo();
   const assetCodes = useAssetCodes();
   const wallets = useWalletList();
   const [code, setCode] = useState("");
@@ -540,6 +549,7 @@ function CreateInvestmentModal({
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
+  const [selectedUnit, setSelectedUnit] = useState("");
 
   // Reset form when modal closes
   useEffect(() => {
@@ -550,6 +560,7 @@ function CreateInvestmentModal({
       setAmount("");
       setDate(new Date().toISOString().slice(0, 10));
       setDescription("");
+      setSelectedUnit("");
     }
   }, [open]);
 
@@ -557,9 +568,20 @@ function CreateInvestmentModal({
 
   const selectedAsset = assetCodes.data?.find((a) => a.code === code);
 
+  // Unit options for the selected asset
+  const unitOptions = getUnitOptions(selectedAsset?.unit);
+  const activeUnit = selectedUnit || unitOptions[0]?.value || "unit";
+  const unitSelectOptions: SelectOption[] = unitOptions.map((u) => ({
+    value: u.value,
+    label: u.label,
+  }));
+  const conversionInfo = getConversionInfo(activeUnit, selectedAsset?.unit);
+
   const qty = parseFloat(quantity) || 0;
+  // Convert to base unit for calculations
+  const qtyInBaseUnit = convertToBaseUnit(qty, activeUnit, selectedAsset?.unit);
   const amt = parseFloat(amount) || 0;
-  const pricePerUnit = qty > 0 ? amt / qty : 0;
+  const pricePerUnit = qtyInBaseUnit > 0 ? amt / qtyInBaseUnit : 0;
 
   const handleQuantityChange = (val: string) => {
     setQuantity(val);
@@ -569,9 +591,18 @@ function CreateInvestmentModal({
     setAmount(val);
   };
 
+  const handleCodeChange = (val: string) => {
+    setCode(val);
+    setSelectedUnit(""); // reset unit when asset changes
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (qty <= 0 || amt <= 0) {
+    if (isDemo) {
+      toast("Demo mode — data is read-only", { icon: "🔒" });
+      return;
+    }
+    if (qtyInBaseUnit <= 0 || amt <= 0) {
       toast.error("Quantity and amount must be greater than 0");
       return;
     }
@@ -586,7 +617,7 @@ function CreateInvestmentModal({
     setLoading(true);
     const payload: CreateInvestmentPayload = {
       code,
-      quantity: qty,
+      quantity: qtyInBaseUnit,
       amount: amt,
       date: new Date(date).toISOString(),
       description: description || undefined,
@@ -635,7 +666,7 @@ function CreateInvestmentModal({
           <SearchableSelect
             label="Asset"
             value={code}
-            onChange={setCode}
+            onChange={handleCodeChange}
             options={
               assetCodes.data?.map((a) => ({
                 value: a.code,
@@ -671,9 +702,21 @@ function CreateInvestmentModal({
             required
           />
 
+          {/* Unit selector (shown when multiple units available) */}
+          {selectedAsset && unitOptions.length > 1 && (
+            <SearchableSelect
+              label="Unit"
+              value={activeUnit}
+              onChange={setSelectedUnit}
+              options={unitSelectOptions}
+              placeholder="Select unit..."
+              searchPlaceholder="Search unit..."
+            />
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <Input
-              label={`Quantity${selectedAsset?.unit ? ` (${selectedAsset.unit})` : ""}`}
+              label={`Quantity (${activeUnit})`}
               type="number"
               step="any"
               value={quantity}
@@ -693,8 +736,24 @@ function CreateInvestmentModal({
             />
           </div>
 
+          {/* Conversion info */}
+          {conversionInfo && (
+            <div className="text-[11px] text-(--muted-foreground) -mt-2 font-mono">
+              {conversionInfo}
+              {qtyInBaseUnit > 0 && (
+                <span className="ml-2 text-gold-400">
+                  ={" "}
+                  {qtyInBaseUnit.toLocaleString("en", {
+                    maximumFractionDigits: 8,
+                  })}{" "}
+                  {selectedAsset?.unit}
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Auto-calculated price per unit */}
-          {qty > 0 && amt > 0 && (
+          {qtyInBaseUnit > 0 && amt > 0 && (
             <div className="rounded-lg border border-(--border) bg-(--secondary)/30 px-4 py-3 space-y-1">
               <div className="flex justify-between text-[11px] text-(--muted-foreground)">
                 <span>Price per {selectedAsset?.unit ?? "unit"}</span>
@@ -783,14 +842,17 @@ function CreateInvestmentModal({
 
 function SellInvestmentModal({
   investment,
+  allInvestments,
   onClose,
   onRefetch,
 }: {
   investment: Investment | null;
+  allInvestments: Investment[];
   onClose: () => void;
   onRefetch: () => void;
 }) {
   const { token } = useAuth();
+  const { isDemo } = useDemo();
   const wallets = useWalletList();
   const [walletId, setWalletId] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -798,6 +860,7 @@ function SellInvestmentModal({
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
+  const [selectedUnit, setSelectedUnit] = useState("");
 
   useEffect(() => {
     if (!investment) {
@@ -807,43 +870,91 @@ function SellInvestmentModal({
       setDate(new Date().toISOString().slice(0, 10));
       setDescription("");
       setLoading(false);
+      setSelectedUnit("");
     }
   }, [investment]);
 
   if (!investment) return null;
 
+  // Total quantity across all investments with the same asset code
+  const totalAvailableQty = allInvestments
+    .filter((i) => i.code === investment.code && i.quantity > 0)
+    .reduce((sum, i) => sum + i.quantity, 0);
+
+  // Unit options for sell
+  const unitOptions = getUnitOptions(investment.asset?.unit);
+  const activeUnit = selectedUnit || unitOptions[0]?.value || "unit";
+  const unitSelectOptions: SelectOption[] = unitOptions.map((u) => ({
+    value: u.value,
+    label: u.label,
+  }));
+  const conversionInfo = getConversionInfo(activeUnit, investment.asset?.unit);
+
+  // Max quantity displayed in the selected unit
+  const maxQtyInSelectedUnit = convertFromBaseUnit(
+    totalAvailableQty,
+    activeUnit,
+    investment.asset?.unit,
+  );
+
   const currentPrice = investment.asset?.toIDR ?? investment.initial_valuation;
   const sellQty = parseFloat(quantity) || 0;
+  // Convert to base unit for submission/validation
+  const sellQtyInBaseUnit = convertToBaseUnit(
+    sellQty,
+    activeUnit,
+    investment.asset?.unit,
+  );
   const sellAmt = parseFloat(amount) || 0;
-  const sellPricePerUnit = sellQty > 0 ? sellAmt / sellQty : 0;
-  const costBasis = sellQty * investment.initial_valuation;
+  const sellPricePerUnit =
+    sellQtyInBaseUnit > 0 ? sellAmt / sellQtyInBaseUnit : 0;
+  const costBasis = sellQtyInBaseUnit * investment.initial_valuation;
   const estimatedPL = sellAmt - costBasis;
 
   const handleSellQuantityChange = (val: string) => {
     setQuantity(val);
     const q = parseFloat(val) || 0;
+    const qBase = convertToBaseUnit(q, activeUnit, investment.asset?.unit);
     // Auto-fill amount based on market price if amount is empty
-    if (!amount && q > 0) {
-      setAmount(String(Math.round(q * currentPrice)));
+    if (!amount && qBase > 0) {
+      setAmount(String(Math.round(qBase * currentPrice)));
     }
   };
 
   const handleSellAmountChange = (val: string) => {
     setAmount(val);
     const a = parseFloat(val) || 0;
-    // Auto-fill quantity if empty
+    // Auto-fill quantity if empty (in selected unit)
     if (!quantity && a > 0 && currentPrice > 0) {
-      setQuantity(String(parseFloat((a / currentPrice).toFixed(8))));
+      const qBase = a / currentPrice;
+      const qInUnit = convertFromBaseUnit(
+        qBase,
+        activeUnit,
+        investment.asset?.unit,
+      );
+      setQuantity(String(parseFloat(qInUnit.toFixed(8))));
     }
+  };
+
+  const handleFillMax = () => {
+    setQuantity(String(parseFloat(maxQtyInSelectedUnit.toFixed(8))));
+    // Auto-fill amount based on market price
+    setAmount(String(Math.round(totalAvailableQty * currentPrice)));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (sellQty > investment.quantity) {
-      toast.error("Cannot sell more than your holdings!");
+    if (isDemo) {
+      toast("Demo mode — data is read-only", { icon: "🔒" });
       return;
     }
-    if (sellQty <= 0 || sellAmt <= 0) {
+    if (sellQtyInBaseUnit > totalAvailableQty) {
+      toast.error(
+        "Cannot sell more than your total holdings across all positions!",
+      );
+      return;
+    }
+    if (sellQtyInBaseUnit <= 0 || sellAmt <= 0) {
       toast.error("Quantity and amount must be greater than 0");
       return;
     }
@@ -854,7 +965,7 @@ function SellInvestmentModal({
     setLoading(true);
     const payload: SellInvestmentPayload = {
       asset_code: investment.code,
-      quantity: sellQty,
+      quantity: sellQtyInBaseUnit,
       amount: sellAmt,
       date: new Date(date).toISOString(),
       description: description || undefined,
@@ -907,11 +1018,23 @@ function SellInvestmentModal({
           <div className="rounded-lg border border-(--border) bg-(--secondary)/30 px-4 py-3 space-y-1">
             <div className="flex justify-between text-xs">
               <span className="text-(--muted-foreground)">
-                Available Holdings
+                Total Available ({investment.code})
               </span>
               <span className="font-mono font-semibold text-(--foreground)">
-                {fmtQty(investment.quantity)}{" "}
-                {investment.asset?.unit ?? "units"}
+                {fmtQty(totalAvailableQty)} {investment.asset?.unit ?? "units"}
+                {allInvestments.filter(
+                  (i) => i.code === investment.code && i.quantity > 0,
+                ).length > 1 && (
+                  <span className="ml-1 text-[10px] text-(--muted-foreground)">
+                    (
+                    {
+                      allInvestments.filter(
+                        (i) => i.code === investment.code && i.quantity > 0,
+                      ).length
+                    }{" "}
+                    positions)
+                  </span>
+                )}
               </span>
             </div>
             <div className="flex justify-between text-xs">
@@ -939,31 +1062,72 @@ function SellInvestmentModal({
             required
           />
 
-          <div className="grid grid-cols-2 gap-3">
-            <Input
-              label={`Quantity to Sell`}
-              type="number"
-              step="any"
-              value={quantity}
-              onChange={(e) => handleSellQuantityChange(e.target.value)}
-              placeholder="0"
-              min="0.00000001"
-              max={String(investment.quantity)}
-              required
+          {/* Unit selector (shown when multiple units available) */}
+          {unitOptions.length > 1 && (
+            <SearchableSelect
+              label="Unit"
+              value={activeUnit}
+              onChange={setSelectedUnit}
+              options={unitSelectOptions}
+              placeholder="Select unit..."
+              searchPlaceholder="Search unit..."
             />
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-medium text-(--foreground) opacity-80">
+                  Quantity to Sell
+                </label>
+                <button
+                  type="button"
+                  onClick={handleFillMax}
+                  className="rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gold-400 bg-gold-400/10 hover:bg-gold-400/20 transition"
+                >
+                  Max
+                </button>
+              </div>
+              <input
+                type="number"
+                step="any"
+                value={quantity}
+                onChange={(e) => handleSellQuantityChange(e.target.value)}
+                placeholder="0"
+                min="0.00000001"
+                required
+                className="w-full rounded-lg border border-(--border) bg-(--input) px-4 py-2.5 text-sm text-(--foreground) outline-none transition-colors focus:border-(--ring) focus:ring-1 focus:ring-(--ring) placeholder:text-(--muted-foreground)"
+              />
+            </div>
             <Input
               label="Total Sell Amount (IDR)"
               type="number"
               value={amount}
               onChange={(e) => handleSellAmountChange(e.target.value)}
-              placeholder={String(Math.round(sellQty * currentPrice))}
+              placeholder={String(Math.round(sellQtyInBaseUnit * currentPrice))}
               min="1"
               required
             />
           </div>
 
+          {/* Conversion info */}
+          {conversionInfo && (
+            <div className="text-[11px] text-(--muted-foreground) -mt-2 font-mono">
+              {conversionInfo}
+              {sellQtyInBaseUnit > 0 && (
+                <span className="ml-2 text-gold-400">
+                  ={" "}
+                  {sellQtyInBaseUnit.toLocaleString("en", {
+                    maximumFractionDigits: 8,
+                  })}{" "}
+                  {investment.asset?.unit}
+                </span>
+              )}
+            </div>
+          )}
+
           {/* Auto-calculated sell price per unit + P&L Preview */}
-          {sellQty > 0 && sellAmt > 0 && (
+          {sellQtyInBaseUnit > 0 && sellAmt > 0 && (
             <div className="rounded-lg border border-(--border) bg-(--secondary)/30 px-4 py-3 space-y-1">
               <div className="flex justify-between text-[11px] text-(--muted-foreground)">
                 <span>Sell price per {investment.asset?.unit ?? "unit"}</span>
@@ -973,7 +1137,7 @@ function SellInvestmentModal({
               </div>
               <div className="flex justify-between text-[11px] text-(--muted-foreground)">
                 <span>
-                  Cost basis ({fmtQty(sellQty)} ×{" "}
+                  Cost basis ({fmtQty(sellQtyInBaseUnit)} ×{" "}
                   {fmtCurrency(investment.initial_valuation)})
                 </span>
                 <span className="font-mono">{fmtCurrency(costBasis)}</span>
@@ -1419,6 +1583,7 @@ export function InvestmentPage() {
       />
       <SellInvestmentModal
         investment={sellInvestment}
+        allInvestments={investmentList.data?.investments ?? []}
         onClose={() => setSellInvestment(null)}
         onRefetch={totalRefetch}
       />

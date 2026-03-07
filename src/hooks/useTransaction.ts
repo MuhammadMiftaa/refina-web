@@ -10,6 +10,8 @@ import {
   fetchCategories,
 } from "@/lib/wallet-transaction-api";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDemo } from "@/contexts/DemoContext";
+import { getDummyTransactionList, DUMMY_CATEGORIES } from "@/lib/dummy-data";
 
 interface AsyncState<T> {
   data: T | null;
@@ -38,6 +40,7 @@ export function useTransactionList(
   params: TransactionListParams & { page?: number },
 ) {
   const { token } = useAuth();
+  const { isDemo } = useDemo();
   const page = params.page ?? 1;
 
   const [state, setState] = useState<AsyncState<TransactionListResponse>>({
@@ -75,6 +78,17 @@ export function useTransactionList(
   }
 
   const refetch = useCallback(async () => {
+    if (isDemo) {
+      const data = getDummyTransactionList({
+        page: pageRef.current,
+        page_size: paramsRef.current.page_size,
+        sort_by: paramsRef.current.sort_by,
+        sort_order: paramsRef.current.sort_order,
+        search: paramsRef.current.search,
+      });
+      setState({ data, loading: false, error: null });
+      return;
+    }
     if (!token) return;
 
     const id = ++fetchRef.current;
@@ -146,6 +160,7 @@ export function useTransactionList(
 
 export function useCategories() {
   const { token } = useAuth();
+  const { isDemo } = useDemo();
   const [state, setState] = useState<AsyncState<Category[]>>({
     data: null,
     loading: true,
@@ -153,6 +168,10 @@ export function useCategories() {
   });
 
   useEffect(() => {
+    if (isDemo) {
+      setState({ data: DUMMY_CATEGORIES, loading: false, error: null });
+      return;
+    }
     if (!token) return;
 
     (async () => {
@@ -183,7 +202,7 @@ export function useCategories() {
         setState({ data: null, loading: false, error: message });
       }
     })();
-  }, [token]);
+  }, [token, isDemo]);
 
   return state;
 }

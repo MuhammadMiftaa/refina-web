@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
+import { useDemo } from "./contexts/DemoContext";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { VerifyOtpPage } from "./pages/VerifyOtpPage";
@@ -13,10 +14,11 @@ import { TransactionPage } from "./pages/TransactionPage";
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { token, isLoading } = useAuth();
+  const { isDemo } = useDemo();
 
   if (isLoading) return null;
 
-  return token ? <>{children}</> : <Navigate to="/login" replace />;
+  return token || isDemo ? <>{children}</> : <Navigate to="/login" replace />;
 }
 
 function App() {

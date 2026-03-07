@@ -18,6 +18,7 @@ import { fmtShort } from "@/lib/dashboard-helpers";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDemo } from "@/contexts/DemoContext";
 import { useWalletList, useWalletTypes } from "@/hooks/useWallet";
 import {
   createWallet,
@@ -471,6 +472,7 @@ function DeleteConfirmModal({
 export function WalletPage() {
   const { theme, toggleTheme } = useTheme();
   const { token } = useAuth();
+  const { isDemo } = useDemo();
   const walletList = useWalletList();
   const walletTypes = useWalletTypes();
 
@@ -532,6 +534,11 @@ export function WalletPage() {
     data: CreateWalletPayload | UpdateWalletPayload,
     isEdit: boolean,
   ) => {
+    if (isDemo) {
+      toast("Demo mode — data is read-only", { icon: "🔒" });
+      setFormOpen(false);
+      return;
+    }
     if (!token) return;
     try {
       if (isEdit && editWallet) {
@@ -550,6 +557,11 @@ export function WalletPage() {
   };
 
   const handleDelete = async () => {
+    if (isDemo) {
+      toast("Demo mode — data is read-only", { icon: "🔒" });
+      setDeleteTarget(null);
+      return;
+    }
     if (!deleteTarget || !token) return;
     try {
       await deleteWallet(token, deleteTarget.id);
