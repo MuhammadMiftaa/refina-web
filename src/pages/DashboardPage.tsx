@@ -14,7 +14,7 @@ import {
   Pie,
   ReferenceLine,
 } from "recharts";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, RefreshCw as Refresh } from "lucide-react";
 import {
   useWallets,
   useFinancialSummary,
@@ -34,6 +34,8 @@ import { cn } from "@/lib/utils";
 import type { FinancialSummary } from "@/types/dashboard";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { refreshCache } from "@/lib/cache-api";
 import {
   SkeletonKPICard,
   SkeletonChart,
@@ -47,6 +49,7 @@ import {
   EmptyFinancialData,
   EmptyTransactions,
 } from "@/components/ui/EmptyState";
+import toast from "react-hot-toast";
 
 // ── Chart Color Tokens ──
 const CHART = {
@@ -273,6 +276,7 @@ export function DashboardPage() {
 
   // ── Theme ──
   const { theme, toggleTheme } = useTheme();
+  const { token } = useAuth();
 
   // ── Data hooks ──
   const wallets = useWallets();
@@ -356,16 +360,43 @@ export function DashboardPage() {
             </div>
           </div>
 
-          {/* Theme toggle — icon only */}
-          <button
-            onClick={toggleTheme}
-            title={
-              theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"
-            }
-            className="flex sm:hidden h-8 w-8 items-center justify-center rounded-lg border border-(--border) text-(--muted-foreground) transition hover:bg-(--muted) hover:text-(--foreground)"
-          >
-            {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
-          </button>
+          {/* Refresh — mobile icon only */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={async () => {
+                const tid = toast.loading("Refreshing dashboard cache...");
+                try {
+                  await refreshCache("dashboard", token ?? undefined);
+                  financialSummary.refetch();
+                  balance.refetch();
+                  transactions.refetch();
+                  netWorth.refetch();
+                  toast.dismiss(tid);
+                  toast.success("Dashboard refreshed");
+                } catch (err: any) {
+                  toast.dismiss(tid);
+                  toast.error(err?.message || "Failed to refresh cache");
+                }
+              }}
+              title="Refresh"
+              className="flex sm:hidden h-8 w-8 items-center justify-center rounded-lg border border-(--border) text-(--muted-foreground) transition hover:bg-(--muted) hover:text-(--foreground)"
+            >
+              <Refresh size={14} />
+            </button>
+
+            {/* Theme toggle — icon only */}
+            <button
+              onClick={toggleTheme}
+              title={
+                theme === "dark"
+                  ? "Switch to Light Mode"
+                  : "Switch to Dark Mode"
+              }
+              className="flex sm:hidden h-8 w-8 items-center justify-center rounded-lg border border-(--border) text-(--muted-foreground) transition hover:bg-(--muted) hover:text-(--foreground)"
+            >
+              {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+            </button>
+          </div>
         </div>
 
         <div className="inline-grid grid-flow-col auto-cols-max grid-rows-2 sm:grid-rows-1 items-center gap-2 sm:gap-3">
@@ -407,6 +438,30 @@ export function DashboardPage() {
               className="w-30 rounded-lg border border-(--border) bg-(--input) px-2 py-1.5 text-xs text-(--foreground) outline-none focus:border-(--ring) sm:w-auto sm:px-2.5"
             />
           </div>
+
+          {/* Refresh — desktop with text */}
+          <button
+            onClick={async () => {
+              const tid = toast.loading("Refreshing dashboard cache...");
+              try {
+                await refreshCache("dashboard", token ?? undefined);
+                financialSummary.refetch();
+                balance.refetch();
+                transactions.refetch();
+                netWorth.refetch();
+                toast.dismiss(tid);
+                toast.success("Dashboard refreshed");
+              } catch (err: any) {
+                toast.dismiss(tid);
+                toast.error(err?.message || "Failed to refresh cache");
+              }
+            }}
+            title="Refresh"
+            className="hidden sm:flex h-8 items-center justify-center gap-1.5 rounded-lg border border-(--border) px-2 text-(--muted-foreground) transition hover:bg-(--muted) hover:text-(--foreground)"
+          >
+            <Refresh size={14} />
+            <span className="text-xs">Refresh</span>
+          </button>
 
           {/* Theme toggle — icon only */}
           <button

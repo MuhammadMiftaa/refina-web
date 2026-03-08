@@ -12,12 +12,14 @@ import {
   Sun,
   Moon,
   AlertTriangle,
+  RefreshCw as Refresh,
 } from "lucide-react";
 import { cn, slugify } from "@/lib/utils";
 import { fmtShort } from "@/lib/dashboard-helpers";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { refreshCache } from "@/lib/cache-api";
 import { useDemo } from "@/contexts/DemoContext";
 import { useWalletList, useWalletTypes } from "@/hooks/useWallet";
 import {
@@ -49,11 +51,11 @@ function fmtCurrency(n: number): string {
   }).format(n);
 }
 
-function getWalletInitials(name: string): string {
-  const words = name.split(/\s+/);
-  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
-  return name.slice(0, 2).toUpperCase();
-}
+// function getWalletInitials(name: string): string {
+//   const words = name.split(/\s+/);
+//   if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+//   return name.slice(0, 2).toUpperCase();
+// }
 
 function getWalletTypeIcon(type: string) {
   switch (type) {
@@ -596,6 +598,25 @@ export function WalletPage() {
             <Plus size={14} />
             <span className="hidden sm:inline">Add Wallet</span>
           </Button>
+          <button
+            onClick={async () => {
+              const tid = toast.loading("Refreshing wallet cache...");
+              try {
+                await refreshCache("wallet", token ?? undefined);
+                walletList.refetch();
+                toast.dismiss(tid);
+                toast.success("Wallet refreshed");
+              } catch (err: any) {
+                toast.dismiss(tid);
+                toast.error(err?.message || "Failed to refresh cache");
+              }
+            }}
+            title="Refresh"
+            className="flex h-8 items-center justify-center gap-1.5 rounded-lg border border-(--border) px-2 text-(--muted-foreground) transition hover:bg-(--muted) hover:text-(--foreground)"
+          >
+            <Refresh size={14} />
+            <span className="hidden sm:inline text-xs">Refresh</span>
+          </button>
           <button
             onClick={toggleTheme}
             title={

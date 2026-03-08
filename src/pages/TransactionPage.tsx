@@ -26,12 +26,14 @@ import {
   AlertTriangle,
   ExternalLink,
   Image as ImageIcon,
+  RefreshCw as Refresh,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDemo } from "@/contexts/DemoContext";
+import { refreshCache } from "@/lib/cache-api";
 import { useTransactionList, useCategories } from "@/hooks/useTransaction";
 import { useWalletList } from "@/hooks/useWallet";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -1528,6 +1530,7 @@ function Pagination({
 
 export function TransactionPage() {
   const { theme, toggleTheme } = useTheme();
+  const { token } = useAuth();
 
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -1590,6 +1593,25 @@ export function TransactionPage() {
             <Plus size={14} />
             <span className="hidden sm:inline">Add Transaction</span>
           </Button>
+          <button
+            onClick={async () => {
+              const tid = toast.loading("Refreshing transaction cache...");
+              try {
+                await refreshCache("transaction", token ?? undefined);
+                txnList.refetch();
+                toast.dismiss(tid);
+                toast.success("Transaction refreshed");
+              } catch (err: any) {
+                toast.dismiss(tid);
+                toast.error(err?.message || "Failed to refresh cache");
+              }
+            }}
+            title="Refresh"
+            className="flex h-8 items-center justify-center gap-1.5 rounded-lg border border-(--border) px-2 text-(--muted-foreground) transition hover:bg-(--muted) hover:text-(--foreground)"
+          >
+            <Refresh size={14} />
+            <span className="hidden sm:inline text-xs">Refresh</span>
+          </button>
           <button
             onClick={toggleTheme}
             title={

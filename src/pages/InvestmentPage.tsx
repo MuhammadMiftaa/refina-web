@@ -14,6 +14,7 @@ import {
   ArrowRightLeft,
   Package,
   Minus,
+  RefreshCw as Refresh,
 } from "lucide-react";
 import {
   PieChart,
@@ -32,6 +33,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDemo } from "@/contexts/DemoContext";
+import { refreshCache } from "@/lib/cache-api";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import {
   useInvestmentList,
@@ -1207,6 +1209,7 @@ function SellInvestmentModal({
 
 export function InvestmentPage() {
   const { theme, toggleTheme } = useTheme();
+  const { token } = useAuth();
   const summary = useInvestmentSummary();
   const investmentList = useInvestmentList({});
 
@@ -1284,6 +1287,26 @@ export function InvestmentPage() {
             <Plus size={14} />
             <span className="hidden sm:inline">Add Investment</span>
           </Button>
+          <button
+            onClick={async () => {
+              const tid = toast.loading("Refreshing investment cache...");
+              try {
+                await refreshCache("investment", token ?? undefined);
+                investmentList.refetch();
+                summary.refetch();
+                toast.dismiss(tid);
+                toast.success("Investment refreshed");
+              } catch (err: any) {
+                toast.dismiss(tid);
+                toast.error(err?.message || "Failed to refresh cache");
+              }
+            }}
+            title="Refresh"
+            className="flex h-8 items-center justify-center gap-1.5 rounded-lg border border-(--border) px-2 text-(--muted-foreground) transition hover:bg-(--muted) hover:text-(--foreground)"
+          >
+            <Refresh size={14} />
+            <span className="hidden sm:inline text-xs">Refresh</span>
+          </button>
           <button
             onClick={toggleTheme}
             title={
