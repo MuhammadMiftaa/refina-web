@@ -61,7 +61,7 @@ deploy-staging:
         export STG_REFINA_WEB=\"$CI_REGISTRY_IMAGE/refina-web\" &&
         export STG_REFINA_WEB_TAG=$TAG_IMAGE
 
-        cd ~/web/staging/refina~/web/production/refinamicroservices &&
+        cd ~/web/staging/refinamicroservices &&
 
         docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY &&
         docker compose -f docker-compose.yml pull stg-refina-web &&
