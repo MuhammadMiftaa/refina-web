@@ -28,9 +28,9 @@ npm run test
 
 ## Environment Variables
 
-| Variable       | Description           | Default                 |
-| -------------- | --------------------- | ----------------------- |
-| `VITE_API_URL` | Auth backend base URL | `http://localhost:8080` |
+| Variable   | Description           | Default                 |
+| ---------- | --------------------- | ----------------------- |
+| `AUTH_URL` | Auth backend base URL | `http://localhost:8080` |
 
 For production, configure `public/env.js` via `envsubst` at container startup using `public/env.template.js`.
 

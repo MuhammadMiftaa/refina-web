@@ -3,11 +3,26 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
+import viteCompression from "vite-plugin-compression";
 
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    // Pre-compress: Brotli (prioritas utama, rasio kompresi terbaik)
+    viteCompression({
+      algorithm: "brotliCompress",
+      ext: ".br",
+      threshold: 1024, // hanya compress file > 1KB
+      deleteOriginFile: false,
+    }),
+    // Pre-compress: Gzip (fallback untuk browser lama / CDN tertentu)
+    viteCompression({
+      algorithm: "gzip",
+      ext: ".gz",
+      threshold: 1024,
+      deleteOriginFile: false,
+    }),
     VitePWA({
       strategies: "injectManifest",
       srcDir: "src",

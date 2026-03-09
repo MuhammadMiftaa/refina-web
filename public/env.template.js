@@ -5,5 +5,6 @@
  * During development, the fallback in src/lib/const.ts is used.
  */
 window.__ENV__ = {
-  API_URL: "$API_URL",
+  AUTH_URL: "$AUTH_URL",
+  BFF_URL: "$BFF_URL",
 };

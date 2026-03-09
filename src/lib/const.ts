@@ -6,7 +6,7 @@
 declare global {
   interface Window {
     __ENV__: {
-      API_URL: string;
+      AUTH_URL: string;
       BFF_URL: string;
     };
   }
@@ -16,12 +16,12 @@ export {};
 
 const env = typeof window !== "undefined" ? window.__ENV__ : undefined;
 
-export const API_BASE_URL: string =
-  env?.API_URL && env.API_URL !== "$API_URL"
-    ? env.API_URL
-    : import.meta.env.VITE_API_URL || "http://localhost:8080";
+export const AUTH_BASE_URL: string =
+  env?.AUTH_URL && env.AUTH_URL !== "$AUTH_URL"
+    ? env.AUTH_URL
+    : import.meta.env.AUTH_URL || "http://localhost:8080";
 
 export const BFF_BASE_URL: string =
   env?.BFF_URL && env.BFF_URL !== "$BFF_URL"
     ? env.BFF_URL
-    : import.meta.env.VITE_BFF_URL || "http://localhost:3001";
+    : import.meta.env.BFF_URL || "http://localhost:8083";
