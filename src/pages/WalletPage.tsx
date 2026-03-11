@@ -125,7 +125,7 @@ function WalletCard({
             />
             <div>
               <div className="text-sm font-bold text-(--foreground)">
-                {wallet.wallet_type_detail?.name}
+                {wallet.name}
               </div>
               <div className="flex items-center gap-1.5 text-[11px] text-(--muted-foreground)">
                 {getWalletTypeIcon(wallet.wallet_type_detail?.type ?? "bank")}

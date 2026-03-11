@@ -212,7 +212,7 @@ function TransactionRow({
         {transaction.description || "—"}
       </td>
       <td className="px-4 py-3">
-        <span
+        <div
           className={cn(
             "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
             typeColors.bg,
@@ -221,8 +221,8 @@ function TransactionRow({
           )}
         >
           {getCategoryTypeIcon(transaction.category_type ?? "expense", 12)}
-          {transaction.category_name}
-        </span>
+          <span className="line-clamp-1">{transaction.category_name}</span>
+        </div>
       </td>
       <td className="whitespace-nowrap px-4 py-3 text-xs text-(--muted-foreground)">
         {transaction.wallet_name}
@@ -280,11 +280,13 @@ function TransactionCard({
       className="rounded-xl border border-(--border) bg-(--card) p-4 transition hover:border-gold-400/20 cursor-pointer"
       onClick={() => onView(transaction)}
     >
-      <div className="mb-2 flex items-start justify-between">
+      <div className="mb-2 flex items-start justify-between basis-1/2">
         <div className="flex items-center gap-2">
-          {getCategoryTypeIcon(transaction.category_type ?? "expense")}
+          <div className="shrink-0">
+            {getCategoryTypeIcon(transaction.category_type ?? "expense")}
+          </div>
           <div>
-            <div className="text-xs font-semibold text-(--foreground)">
+            <div className="text-xs font-semibold text-(--foreground) line-clamp-1">
               {transaction.description || "No description"}
             </div>
             <div className="text-[10px] text-(--muted-foreground)">
@@ -294,7 +296,7 @@ function TransactionCard({
         </div>
         <span
           className={cn(
-            "font-mono text-sm font-bold",
+            "font-mono text-sm font-bold basis-1/2 min-w-0 truncate text-right",
             transaction.category_type === "income"
               ? "text-emerald-500"
               : transaction.category_type === "expense"
