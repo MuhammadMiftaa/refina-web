@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/useProfile";
 
 interface NavItem {
   icon: React.ElementType;
@@ -30,12 +31,26 @@ const MAIN_NAV: NavItem[] = [
 
 export function AppSidebar() {
   const { user, logout } = useAuth();
+  const { data: profile } = useProfile();
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const initials = user?.email ? user.email.slice(0, 2).toUpperCase() : "AU";
+  // Use profile fullname initials if available, otherwise fallback to email
+  const initials = profile?.fullname
+    ? profile.fullname
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : user?.email
+      ? user.email.slice(0, 2).toUpperCase()
+      : "AU";
+
+  // Profile photo URL
+  const photoUrl = profile?.photo_url || "";
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -127,17 +142,30 @@ export function AppSidebar() {
       <div className="flex flex-col gap-1 border-t border-(--border) p-2">
         {collapsed ? (
           <div className="flex justify-center py-1">
-            <div
-              className="flex h-9 w-9 items-center justify-center rounded-full text-[12px] font-bold text-black"
-              style={{
-                background:
-                  "linear-gradient(135deg, #ffd700 0%, #daa520 60%, #c5961e 100%)",
-                boxShadow: "0 0 10px 2px rgba(218,165,32,0.45)",
-              }}
+            <button
+              onClick={() => navigate("/profile")}
+              className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full text-[12px] font-bold text-black transition hover:ring-2 hover:ring-gold-400/50"
+              style={
+                !photoUrl
+                  ? {
+                      background:
+                        "linear-gradient(135deg, #ffd700 0%, #daa520 60%, #c5961e 100%)",
+                      boxShadow: "0 0 10px 2px rgba(218,165,32,0.45)",
+                    }
+                  : undefined
+              }
               title={user?.email ?? "Profile"}
             >
-              {initials}
-            </div>
+              {photoUrl ? (
+                <img
+                  src={photoUrl}
+                  alt="Profile"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                initials
+              )}
+            </button>
           </div>
         ) : (
           <div
@@ -151,16 +179,29 @@ export function AppSidebar() {
             }}
           >
             <div className="flex items-center gap-3 px-3 py-2.5">
-              <div
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[12px] font-bold text-black"
-                style={{
-                  background:
-                    "linear-gradient(135deg, #ffd700 0%, #daa520 60%, #c5961e 100%)",
-                  boxShadow: "0 0 8px 1px rgba(218,165,32,0.5)",
-                }}
+              <button
+                onClick={() => navigate("/profile")}
+                className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full text-[12px] font-bold text-black transition hover:ring-2 hover:ring-gold-400/50"
+                style={
+                  !photoUrl
+                    ? {
+                        background:
+                          "linear-gradient(135deg, #ffd700 0%, #daa520 60%, #c5961e 100%)",
+                        boxShadow: "0 0 8px 1px rgba(218,165,32,0.5)",
+                      }
+                    : undefined
+                }
               >
-                {initials}
-              </div>
+                {photoUrl ? (
+                  <img
+                    src={photoUrl}
+                    alt="Profile"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  initials
+                )}
+              </button>
               <div className="min-w-0 flex-1">
                 <div
                   className="truncate text-[11px] font-bold leading-tight"
@@ -171,13 +212,16 @@ export function AppSidebar() {
                     backgroundClip: "text",
                   }}
                 >
-                  {user?.email?.split("@")[0] ?? "User"}
+                  {profile?.fullname ||
+                    user?.email?.split("@")[0] ||
+                    "User"}
                 </div>
                 <div className="truncate text-[10px] text-(--muted-foreground)">
                   {user?.email ?? ""}
                 </div>
               </div>
               <button
+                onClick={() => navigate("/profile")}
                 className="shrink-0 rounded-md p-1 text-(--muted-foreground) transition hover:text-gold-400"
                 title="Profile"
               >
