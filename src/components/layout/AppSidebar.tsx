@@ -11,6 +11,9 @@ import {
   User,
   Menu,
   X,
+  PieChart,
+  Target,
+  CalendarClock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,6 +29,12 @@ const MAIN_NAV: NavItem[] = [
   { icon: Wallet, label: "Wallet", path: "/wallet" },
   { icon: TrendingUp, label: "Investment", path: "/investment" },
   { icon: ArrowLeftRight, label: "Transaction", path: "/transaction" },
+];
+
+const MONEY_FLOW_NAV: NavItem[] = [
+  { icon: PieChart, label: "Categories", path: "/categories" },
+  { icon: Target, label: "Budget", path: "/budget" },
+  { icon: CalendarClock, label: "Scheduled", path: "/scheduled" },
 ];
 
 export function AppSidebar() {
@@ -108,6 +117,46 @@ export function AppSidebar() {
           Main Menu
         </div>
         {MAIN_NAV.map((item) => {
+          const isActive = location.pathname === item.path;
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.path}
+              onClick={() => navigate(item.path)}
+              title={collapsed ? item.label : undefined}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-all",
+                isActive
+                  ? "bg-gold-400/10 text-gold-400 shadow-sm"
+                  : "text-(--muted-foreground) hover:bg-(--muted) hover:text-(--foreground)",
+                collapsed && "justify-center px-2",
+              )}
+            >
+              <Icon
+                size={16}
+                className={cn("shrink-0", isActive && "text-gold-400")}
+              />
+              {!collapsed && <span>{item.label}</span>}
+              {isActive && !collapsed && (
+                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-gold-400" />
+              )}
+            </button>
+          );
+        })}
+
+        {/* Money Flow Section */}
+        <div
+          className={cn(
+            "mt-3 mb-1 px-2 text-[10px] font-semibold uppercase tracking-widest text-(--muted-foreground)",
+            collapsed && "hidden",
+          )}
+        >
+          Money Flow
+        </div>
+        {collapsed && (
+          <div className="my-1 mx-2 h-px bg-(--border)" />
+        )}
+        {MONEY_FLOW_NAV.map((item) => {
           const isActive = location.pathname === item.path;
           const Icon = item.icon;
           return (

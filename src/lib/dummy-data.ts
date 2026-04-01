@@ -1269,6 +1269,362 @@ export function getDummyTransactionCategories(
   ];
 }
 
+// ════════════════════════════════════════════
+// CATEGORIES — FULL BREAKDOWN (MONEY FLOW)
+// ════════════════════════════════════════════
+
+export interface CategoryBreakdownItem {
+  category_id: string;
+  category_name: string;
+  category_type: "income" | "expense";
+  group_name: string;
+  total_amount: number;
+  total_transactions: number;
+  percentage: number;
+}
+
+export function getDummyCategoryBreakdown(
+  type: "income" | "expense",
+): CategoryBreakdownItem[] {
+  if (type === "expense") {
+    const items = [
+      { category_id: "cat-010", category_name: "Food & Beverage", group_name: "Daily Needs", total_amount: 3200000, total_transactions: 12 },
+      { category_id: "cat-011", category_name: "Transportation", group_name: "Daily Needs", total_amount: 2100000, total_transactions: 8 },
+      { category_id: "cat-014", category_name: "Shopping", group_name: "Lifestyle", total_amount: 1850000, total_transactions: 5 },
+      { category_id: "cat-012", category_name: "Utilities", group_name: "Bills", total_amount: 1500000, total_transactions: 4 },
+      { category_id: "cat-013", category_name: "Entertainment", group_name: "Lifestyle", total_amount: 950000, total_transactions: 3 },
+      { category_id: "cat-015", category_name: "Health", group_name: "Essentials", total_amount: 850000, total_transactions: 2 },
+      { category_id: "cat-016", category_name: "Education", group_name: "Self Development", total_amount: 650000, total_transactions: 2 },
+      { category_id: "cat-017", category_name: "Insurance", group_name: "Bills", total_amount: 500000, total_transactions: 1 },
+      { category_id: "cat-018", category_name: "Subscriptions", group_name: "Bills", total_amount: 350000, total_transactions: 3 },
+      { category_id: "cat-019", category_name: "Gifts & Donations", group_name: "Social", total_amount: 200000, total_transactions: 1 },
+      { category_id: "cat-021", category_name: "Personal Care", group_name: "Essentials", total_amount: 180000, total_transactions: 2 },
+      { category_id: "cat-022", category_name: "Home & Living", group_name: "Essentials", total_amount: 420000, total_transactions: 3 },
+    ];
+    const total = items.reduce((s, i) => s + i.total_amount, 0);
+    return items.map((i) => ({
+      ...i,
+      category_type: "expense" as const,
+      percentage: total > 0 ? (i.total_amount / total) * 100 : 0,
+    }));
+  }
+
+  const items = [
+    { category_id: "cat-001", category_name: "Salary", group_name: "Employment", total_amount: 12500000, total_transactions: 1 },
+    { category_id: "cat-002", category_name: "Freelance", group_name: "Employment", total_amount: 3500000, total_transactions: 2 },
+    { category_id: "cat-003", category_name: "Investment Return", group_name: "Passive Income", total_amount: 750000, total_transactions: 1 },
+    { category_id: "cat-004", category_name: "Side Business", group_name: "Business", total_amount: 1200000, total_transactions: 3 },
+    { category_id: "cat-005", category_name: "Cashback & Rewards", group_name: "Passive Income", total_amount: 85000, total_transactions: 4 },
+    { category_id: "cat-006", category_name: "Rental Income", group_name: "Passive Income", total_amount: 2000000, total_transactions: 1 },
+    { category_id: "cat-007", category_name: "Bonus", group_name: "Employment", total_amount: 5000000, total_transactions: 1 },
+  ];
+  const total = items.reduce((s, i) => s + i.total_amount, 0);
+  return items.map((i) => ({
+    ...i,
+    category_type: "income" as const,
+    percentage: total > 0 ? (i.total_amount / total) * 100 : 0,
+  }));
+}
+
+// ════════════════════════════════════════════
+// BUDGET — MONTHLY GOAL & STREAK (MONEY FLOW)
+// ════════════════════════════════════════════
+
+export interface BudgetItem {
+  id: string;
+  scope: "overall" | "category";
+  category_id?: string;
+  category_name?: string;
+  wallet_scope: "all" | string;
+  wallet_name?: string;
+  monthly_limit: number;
+  current_spent: number;
+  period: string; // "2026-03"
+  streak_count: number;
+  streak_active: boolean;
+}
+
+export function getDummyBudgets(): BudgetItem[] {
+  return [
+    {
+      id: "bgt-001",
+      scope: "overall",
+      wallet_scope: "all",
+      monthly_limit: 15000000,
+      current_spent: 12750000,
+      period: "2026-03",
+      streak_count: 5,
+      streak_active: true,
+    },
+    {
+      id: "bgt-002",
+      scope: "category",
+      category_id: "cat-010",
+      category_name: "Food & Beverage",
+      wallet_scope: "all",
+      monthly_limit: 3500000,
+      current_spent: 3200000,
+      period: "2026-03",
+      streak_count: 3,
+      streak_active: true,
+    },
+    {
+      id: "bgt-003",
+      scope: "category",
+      category_id: "cat-011",
+      category_name: "Transportation",
+      wallet_scope: "all",
+      monthly_limit: 2000000,
+      current_spent: 2100000,
+      period: "2026-03",
+      streak_count: 0,
+      streak_active: false,
+    },
+    {
+      id: "bgt-004",
+      scope: "category",
+      category_id: "cat-013",
+      category_name: "Entertainment",
+      wallet_scope: "all",
+      monthly_limit: 1000000,
+      current_spent: 950000,
+      period: "2026-03",
+      streak_count: 7,
+      streak_active: true,
+    },
+    {
+      id: "bgt-005",
+      scope: "category",
+      category_id: "cat-014",
+      category_name: "Shopping",
+      wallet_scope: "w-001",
+      wallet_name: "BCA Primary",
+      monthly_limit: 2000000,
+      current_spent: 1850000,
+      period: "2026-03",
+      streak_count: 2,
+      streak_active: true,
+    },
+    {
+      id: "bgt-006",
+      scope: "category",
+      category_id: "cat-012",
+      category_name: "Utilities",
+      wallet_scope: "all",
+      monthly_limit: 1500000,
+      current_spent: 1500000,
+      period: "2026-03",
+      streak_count: 1,
+      streak_active: true,
+    },
+  ];
+}
+
+// ════════════════════════════════════════════
+// SCHEDULED — SCHEDULED TRANSACTIONS (MONEY FLOW)
+// ════════════════════════════════════════════
+
+export interface ScheduledJobLog {
+  id: string;
+  executed_at: string;
+  status: "success" | "failed";
+  reason?: string;
+}
+
+export interface ScheduledJob {
+  id: string;
+  schedule_type: "once" | "repeat";
+  job_type: "transaction" | "investment";
+  description: string;
+  amount: number;
+  wallet_name?: string;
+  category_name?: string;
+  asset_code?: string;
+  repeat_interval?: "daily" | "weekly" | "monthly";
+  repeat_detail?: string;
+  start_date: string;
+  end_date: string | null;
+  status: "active" | "paused" | "completed";
+  next_execution: string | null;
+  last_execution: string | null;
+  created_at: string;
+  execution_logs: ScheduledJobLog[];
+}
+
+export function getDummyScheduledJobs(): ScheduledJob[] {
+  return [
+    {
+      id: "sj-001",
+      schedule_type: "repeat",
+      job_type: "transaction",
+      description: "Monthly Salary Auto-Record",
+      amount: 12500000,
+      wallet_name: "BNI Payroll",
+      category_name: "Salary",
+      repeat_interval: "monthly",
+      repeat_detail: "Every 1st",
+      start_date: "2025-01-01T00:00:00Z",
+      end_date: null,
+      status: "active",
+      next_execution: "2026-04-01T01:00:00+07:00",
+      last_execution: "2026-03-01T01:00:00+07:00",
+      created_at: "2025-01-01T00:00:00Z",
+      execution_logs: [
+        { id: "log-001", executed_at: "2026-03-01T01:00:00+07:00", status: "success" },
+        { id: "log-002", executed_at: "2026-02-01T01:00:00+07:00", status: "success" },
+        { id: "log-003", executed_at: "2026-01-01T01:00:00+07:00", status: "success" },
+      ],
+    },
+    {
+      id: "sj-002",
+      schedule_type: "repeat",
+      job_type: "transaction",
+      description: "Weekly Grocery Budget",
+      amount: 500000,
+      wallet_name: "BCA Primary",
+      category_name: "Food & Beverage",
+      repeat_interval: "weekly",
+      repeat_detail: "Every Monday",
+      start_date: "2025-06-01T00:00:00Z",
+      end_date: null,
+      status: "active",
+      next_execution: "2026-04-07T01:00:00+07:00",
+      last_execution: "2026-03-31T01:00:00+07:00",
+      created_at: "2025-06-01T00:00:00Z",
+      execution_logs: [
+        { id: "log-004", executed_at: "2026-03-31T01:00:00+07:00", status: "success" },
+        { id: "log-005", executed_at: "2026-03-24T01:00:00+07:00", status: "success" },
+        { id: "log-006", executed_at: "2026-03-17T01:00:00+07:00", status: "failed", reason: "Wallet balance insufficient" },
+        { id: "log-007", executed_at: "2026-03-10T01:00:00+07:00", status: "success" },
+      ],
+    },
+    {
+      id: "sj-003",
+      schedule_type: "repeat",
+      job_type: "investment",
+      description: "Monthly Bitcoin DCA",
+      amount: 1000000,
+      asset_code: "BTC",
+      wallet_name: "BCA Primary",
+      repeat_interval: "monthly",
+      repeat_detail: "Every 15th",
+      start_date: "2025-03-15T00:00:00Z",
+      end_date: "2026-12-15T00:00:00Z",
+      status: "active",
+      next_execution: "2026-04-15T01:00:00+07:00",
+      last_execution: "2026-03-15T01:00:00+07:00",
+      created_at: "2025-03-15T00:00:00Z",
+      execution_logs: [
+        { id: "log-008", executed_at: "2026-03-15T01:00:00+07:00", status: "success" },
+        { id: "log-009", executed_at: "2026-02-15T01:00:00+07:00", status: "success" },
+        { id: "log-010", executed_at: "2026-01-15T01:00:00+07:00", status: "success" },
+      ],
+    },
+    {
+      id: "sj-004",
+      schedule_type: "repeat",
+      job_type: "transaction",
+      description: "Internet Subscription",
+      amount: 450000,
+      wallet_name: "Mandiri Savings",
+      category_name: "Utilities",
+      repeat_interval: "monthly",
+      repeat_detail: "Every 20th",
+      start_date: "2025-01-20T00:00:00Z",
+      end_date: null,
+      status: "active",
+      next_execution: "2026-04-20T01:00:00+07:00",
+      last_execution: "2026-03-20T01:00:00+07:00",
+      created_at: "2025-01-20T00:00:00Z",
+      execution_logs: [
+        { id: "log-011", executed_at: "2026-03-20T01:00:00+07:00", status: "success" },
+        { id: "log-012", executed_at: "2026-02-20T01:00:00+07:00", status: "success" },
+      ],
+    },
+    {
+      id: "sj-005",
+      schedule_type: "once",
+      job_type: "transaction",
+      description: "Annual Insurance Premium",
+      amount: 6000000,
+      wallet_name: "BCA Primary",
+      category_name: "Insurance",
+      start_date: "2026-06-01T00:00:00Z",
+      end_date: "2026-06-01T00:00:00Z",
+      status: "active",
+      next_execution: "2026-06-01T01:00:00+07:00",
+      last_execution: null,
+      created_at: "2026-03-01T00:00:00Z",
+      execution_logs: [],
+    },
+    {
+      id: "sj-006",
+      schedule_type: "repeat",
+      job_type: "transaction",
+      description: "Netflix Subscription",
+      amount: 150000,
+      wallet_name: "GoPay Daily",
+      category_name: "Entertainment",
+      repeat_interval: "monthly",
+      repeat_detail: "Every 5th",
+      start_date: "2024-06-05T00:00:00Z",
+      end_date: null,
+      status: "paused",
+      next_execution: null,
+      last_execution: "2026-02-05T01:00:00+07:00",
+      created_at: "2024-06-05T00:00:00Z",
+      execution_logs: [
+        { id: "log-013", executed_at: "2026-02-05T01:00:00+07:00", status: "success" },
+        { id: "log-014", executed_at: "2026-01-05T01:00:00+07:00", status: "success" },
+      ],
+    },
+    {
+      id: "sj-007",
+      schedule_type: "repeat",
+      job_type: "investment",
+      description: "Monthly Gold Savings",
+      amount: 2000000,
+      asset_code: "XAU",
+      wallet_name: "Mandiri Savings",
+      repeat_interval: "monthly",
+      repeat_detail: "Every 10th",
+      start_date: "2025-01-10T00:00:00Z",
+      end_date: "2025-12-10T00:00:00Z",
+      status: "completed",
+      next_execution: null,
+      last_execution: "2025-12-10T01:00:00+07:00",
+      created_at: "2025-01-10T00:00:00Z",
+      execution_logs: [
+        { id: "log-015", executed_at: "2025-12-10T01:00:00+07:00", status: "success" },
+        { id: "log-016", executed_at: "2025-11-10T01:00:00+07:00", status: "success" },
+        { id: "log-017", executed_at: "2025-10-10T01:00:00+07:00", status: "failed", reason: "API timeout" },
+      ],
+    },
+    {
+      id: "sj-008",
+      schedule_type: "repeat",
+      job_type: "transaction",
+      description: "Daily Coffee Allowance",
+      amount: 35000,
+      wallet_name: "GoPay Daily",
+      category_name: "Food & Beverage",
+      repeat_interval: "daily",
+      repeat_detail: "Every day",
+      start_date: "2026-03-01T00:00:00Z",
+      end_date: "2026-03-31T00:00:00Z",
+      status: "completed",
+      next_execution: null,
+      last_execution: "2026-03-31T01:00:00+07:00",
+      created_at: "2026-03-01T00:00:00Z",
+      execution_logs: [
+        { id: "log-018", executed_at: "2026-03-31T01:00:00+07:00", status: "success" },
+        { id: "log-019", executed_at: "2026-03-30T01:00:00+07:00", status: "success" },
+        { id: "log-020", executed_at: "2026-03-29T01:00:00+07:00", status: "success" },
+      ],
+    },
+  ];
+}
+
 export function getDummyNetWorthComposition(): NetWorthComposition {
   const totalBalance = DUMMY_WALLETS.reduce((s, w) => s + w.balance, 0);
   const invSummary = getDummyInvestmentSummary();
