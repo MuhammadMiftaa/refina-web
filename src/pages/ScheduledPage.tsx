@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Sun,
   Moon,
@@ -26,8 +26,12 @@ import {
 import { cn } from "@/lib/utils";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useTheme } from "@/contexts/ThemeContext";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { EmptyState } from "@/components/ui/EmptyState";
 import {
   getDummyScheduledJobs,
+  getDummyCategoryBreakdown,
+  DUMMY_DASHBOARD_WALLETS,
   type ScheduledJob,
   type ScheduledJobLog,
 } from "@/lib/dummy-data";
@@ -99,17 +103,21 @@ function getStatusStyle(status: ScheduledJob["status"]) {
 }
 
 // ════════════════════════════════════════════
-// DEMO MODAL
+// MODAL WRAPPER
 // ════════════════════════════════════════════
 
-function DemoModal({
+function Modal({
   open,
   title,
   onClose,
+  children,
+  maxWidth = "max-w-md",
 }: {
   open: boolean;
   title: string;
   onClose: () => void;
+  children: React.ReactNode;
+  maxWidth?: string;
 }) {
   if (!open) return null;
   return (
@@ -118,7 +126,10 @@ function DemoModal({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm overflow-hidden rounded-2xl border border-(--border) bg-(--card)"
+        className={cn(
+          "w-full overflow-hidden rounded-2xl border border-(--border) bg-(--card)",
+          maxWidth,
+        )}
         onClick={(e) => e.stopPropagation()}
         style={{
           boxShadow:
@@ -134,39 +145,341 @@ function DemoModal({
             <X size={16} />
           </button>
         </div>
-        <div className="p-5">
-          <div className="text-center py-4">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gold-400/10 text-xl">
-              🔒
-            </div>
-            <div className="text-sm font-semibold text-(--foreground) mb-1">
-              Demo Mode
-            </div>
-            <div className="text-xs text-(--muted-foreground) mb-4">
-              This action is not available in demo mode. Data is read-only.
-            </div>
-            <button
-              onClick={onClose}
-              className="rounded-lg bg-gold-btn px-6 py-2 text-sm font-semibold text-dark transition hover:opacity-90"
-            >
-              Got it
-            </button>
-          </div>
-        </div>
+        <div className="p-5 max-h-[70vh] overflow-y-auto">{children}</div>
       </div>
     </div>
   );
 }
 
 // ════════════════════════════════════════════
-// EXECUTION LOG TABLE
+// CREATE SCHEDULE FORM
+// ════════════════════════════════════════════
+
+function CreateScheduleForm({ onClose }: { onClose: () => void }) {
+  const [jobType, setJobType] = useState<"transaction" | "investment">(
+    "transaction",
+  );
+  const [scheduleType, setScheduleType] = useState<"once" | "repeat">(
+    "repeat",
+  );
+  const categories = getDummyCategoryBreakdown("expense");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    toast("Demo mode — data is read-only", { icon: "🔒" });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-3.5">
+      {/* Job Type */}
+      <div className="space-y-1.5">
+        <label className="block text-xs font-medium text-(--foreground) opacity-80">
+          Job Type
+        </label>
+        <div className="flex gap-2">
+          {(["transaction", "investment"] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setJobType(t)}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold capitalize transition",
+                jobType === t
+                  ? t === "transaction"
+                    ? "border-blue-500/40 bg-blue-500/10 text-blue-400"
+                    : "border-gold-400/40 bg-gold-400/10 text-gold-400"
+                  : "border-(--border) text-(--muted-foreground) hover:text-(--foreground)",
+              )}
+            >
+              {t === "transaction" ? (
+                <ArrowLeftRight size={12} />
+              ) : (
+                <TrendingUp size={12} />
+              )}
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Schedule Type */}
+      <div className="space-y-1.5">
+        <label className="block text-xs font-medium text-(--foreground) opacity-80">
+          Schedule Type
+        </label>
+        <div className="flex gap-2">
+          {(["repeat", "once"] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setScheduleType(t)}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition",
+                scheduleType === t
+                  ? "border-gold-400/40 bg-gold-400/10 text-gold-400"
+                  : "border-(--border) text-(--muted-foreground) hover:text-(--foreground)",
+              )}
+            >
+              {t === "repeat" ? <Repeat size={12} /> : <Zap size={12} />}
+              {t === "repeat" ? "Recurring" : "One-time"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Description */}
+      <div className="space-y-1.5">
+        <label className="block text-xs font-medium text-(--foreground) opacity-80">
+          Description
+        </label>
+        <input
+          type="text"
+          placeholder="e.g. Monthly Netflix"
+          className="w-full rounded-lg border border-(--border) bg-(--input) px-3 py-2 text-xs text-(--foreground) outline-none focus:border-(--ring)"
+        />
+      </div>
+
+      {/* Amount */}
+      <div className="space-y-1.5">
+        <label className="block text-xs font-medium text-(--foreground) opacity-80">
+          Amount (IDR)
+        </label>
+        <input
+          type="number"
+          placeholder="e.g. 150000"
+          className="w-full rounded-lg border border-(--border) bg-(--input) px-3 py-2 text-xs text-(--foreground) outline-none focus:border-(--ring)"
+        />
+      </div>
+
+      {/* Category / Asset */}
+      {jobType === "transaction" ? (
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium text-(--foreground) opacity-80">
+            Category
+          </label>
+          <select className="w-full rounded-lg border border-(--border) bg-(--input) px-3 py-2 text-xs text-(--foreground) outline-none focus:border-(--ring)">
+            <option value="">Select category</option>
+            {categories.map((c) => (
+              <option key={c.category_id} value={c.category_name}>
+                {c.category_name}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium text-(--foreground) opacity-80">
+            Asset Code
+          </label>
+          <select className="w-full rounded-lg border border-(--border) bg-(--input) px-3 py-2 text-xs text-(--foreground) outline-none focus:border-(--ring)">
+            <option value="">Select asset</option>
+            <option value="XAU">XAU — Gold</option>
+            <option value="BTC">BTC — Bitcoin</option>
+            <option value="ETH">ETH — Ethereum</option>
+            <option value="BBCA">BBCA — Bank Central Asia</option>
+          </select>
+        </div>
+      )}
+
+      {/* Wallet */}
+      <div className="space-y-1.5">
+        <label className="block text-xs font-medium text-(--foreground) opacity-80">
+          Wallet
+        </label>
+        <select className="w-full rounded-lg border border-(--border) bg-(--input) px-3 py-2 text-xs text-(--foreground) outline-none focus:border-(--ring)">
+          <option value="">Select wallet</option>
+          {DUMMY_DASHBOARD_WALLETS.map((w) => (
+            <option key={w.wallet_id} value={w.wallet_id}>
+              {w.wallet_name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Interval (if repeat) */}
+      {scheduleType === "repeat" && (
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-(--foreground) opacity-80">
+              Interval
+            </label>
+            <select className="w-full rounded-lg border border-(--border) bg-(--input) px-3 py-2 text-xs text-(--foreground) outline-none focus:border-(--ring)">
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-(--foreground) opacity-80">
+              Detail
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Every 1st"
+              className="w-full rounded-lg border border-(--border) bg-(--input) px-3 py-2 text-xs text-(--foreground) outline-none focus:border-(--ring)"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Dates */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium text-(--foreground) opacity-80">
+            Start Date
+          </label>
+          <input
+            type="date"
+            className="w-full rounded-lg border border-(--border) bg-(--input) px-3 py-2 text-xs text-(--foreground) outline-none focus:border-(--ring)"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="block text-xs font-medium text-(--foreground) opacity-80">
+            End Date
+          </label>
+          <input
+            type="date"
+            className="w-full rounded-lg border border-(--border) bg-(--input) px-3 py-2 text-xs text-(--foreground) outline-none focus:border-(--ring)"
+          />
+          <span className="text-[10px] text-(--muted-foreground)">
+            Leave empty for no end date
+          </span>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-2 pt-1">
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex-1 rounded-lg border border-(--border) px-3 py-2 text-xs font-medium text-(--muted-foreground) transition hover:text-(--foreground)"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className="flex-1 rounded-lg bg-gold-btn px-3 py-2 text-xs font-semibold text-dark transition hover:opacity-90"
+        >
+          Create Schedule
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// ════════════════════════════════════════════
+// CONFIRM DIALOG
+// ════════════════════════════════════════════
+
+function ConfirmDialog({
+  message,
+  confirmLabel,
+  variant,
+  onClose,
+}: {
+  message: string;
+  confirmLabel: string;
+  variant: "danger" | "warning" | "info";
+  onClose: () => void;
+}) {
+  const handleConfirm = () => {
+    toast("Demo mode — data is read-only", { icon: "🔒" });
+  };
+
+  const icon = variant === "danger" ? "🗑️" : variant === "warning" ? "⏸️" : "▶️";
+
+  return (
+    <div className="flex flex-col gap-4 text-center">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-(--muted) text-xl">
+        {icon}
+      </div>
+      <p className="text-xs text-(--muted-foreground)">{message}</p>
+      <div className="flex gap-2">
+        <button
+          onClick={onClose}
+          className="flex-1 rounded-lg border border-(--border) px-3 py-2 text-xs font-medium text-(--muted-foreground) transition hover:text-(--foreground)"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleConfirm}
+          className={cn(
+            "flex-1 rounded-lg px-3 py-2 text-xs font-semibold transition border",
+            variant === "danger"
+              ? "bg-rose-500/20 text-rose-400 border-rose-500/30 hover:bg-rose-500/30"
+              : variant === "warning"
+                ? "bg-amber-500/20 text-amber-400 border-amber-500/30 hover:bg-amber-500/30"
+                : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/30",
+          )}
+        >
+          {confirmLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════
+// SKELETON
+// ════════════════════════════════════════════
+
+function ScheduledSkeleton() {
+  return (
+    <div className="flex flex-col gap-4">
+      {/* KPI skeleton */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div
+            key={i}
+            className="rounded-xl border border-(--border) bg-(--card) px-4 py-3"
+          >
+            <Skeleton className="h-2 w-12 mb-2" />
+            <Skeleton className="h-6 w-16 mb-1" />
+          </div>
+        ))}
+      </div>
+      {/* Cards skeleton */}
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div
+          key={i}
+          className="rounded-xl border border-(--border) bg-(--card) p-4"
+        >
+          <div className="flex items-start gap-3 mb-3">
+            <Skeleton className="h-10 w-10 rounded-xl shrink-0" />
+            <div className="flex-1">
+              <Skeleton className="h-4 w-48 mb-2" />
+              <div className="flex gap-2">
+                <Skeleton className="h-5 w-16 rounded-full" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+            </div>
+            <div className="text-right">
+              <Skeleton className="h-4 w-20 mb-1" />
+              <Skeleton className="h-2 w-10 ml-auto" />
+            </div>
+          </div>
+          <div className="flex gap-2 ml-[52px]">
+            <Skeleton className="h-7 w-24 rounded-lg" />
+            <Skeleton className="h-7 w-24 rounded-lg" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ════════════════════════════════════════════
+// EXECUTION LOG
 // ════════════════════════════════════════════
 
 function ExecutionLogTable({ logs }: { logs: ScheduledJobLog[] }) {
   if (logs.length === 0) {
     return (
       <div className="rounded-lg border border-(--border) bg-(--secondary)/20 px-4 py-6 text-center">
-        <Clock size={20} className="mx-auto mb-2 text-(--muted-foreground) opacity-40" />
+        <Clock
+          size={20}
+          className="mx-auto mb-2 text-(--muted-foreground) opacity-40"
+        />
         <div className="text-xs text-(--muted-foreground)">
           No execution history yet
         </div>
@@ -176,12 +489,17 @@ function ExecutionLogTable({ logs }: { logs: ScheduledJobLog[] }) {
 
   return (
     <div className="rounded-lg border border-(--border) bg-(--secondary)/10 overflow-hidden">
-      {/* Mobile-friendly log items */}
       <div className="divide-y divide-(--border)">
         {logs.map((log) => (
-          <div key={log.id} className="flex items-center gap-3 px-3 py-2.5 sm:px-4">
+          <div
+            key={log.id}
+            className="flex items-center gap-3 px-3 py-2.5 sm:px-4"
+          >
             {log.status === "success" ? (
-              <CheckCircle2 size={14} className="shrink-0 text-emerald-500" />
+              <CheckCircle2
+                size={14}
+                className="shrink-0 text-emerald-500"
+              />
             ) : (
               <XCircle size={14} className="shrink-0 text-rose-500" />
             )}
@@ -198,7 +516,9 @@ function ExecutionLogTable({ logs }: { logs: ScheduledJobLog[] }) {
             <span
               className={cn(
                 "shrink-0 text-[10px] font-semibold",
-                log.status === "success" ? "text-emerald-500" : "text-rose-500",
+                log.status === "success"
+                  ? "text-emerald-500"
+                  : "text-rose-500",
               )}
             >
               {log.status === "success" ? "Success" : "Failed"}
@@ -211,7 +531,7 @@ function ExecutionLogTable({ logs }: { logs: ScheduledJobLog[] }) {
 }
 
 // ════════════════════════════════════════════
-// SCHEDULE CARD (Redesigned)
+// SCHEDULE CARD
 // ════════════════════════════════════════════
 
 function ScheduleCard({
@@ -219,7 +539,7 @@ function ScheduleCard({
   onOpenModal,
 }: {
   job: ScheduledJob;
-  onOpenModal: (title: string) => void;
+  onOpenModal: (modal: ModalState) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const statusStyle = getStatusStyle(job.status);
@@ -240,7 +560,7 @@ function ScheduleCard({
           : "border-(--border) opacity-85 hover:opacity-100",
       )}
     >
-      {/* Status color bar at top */}
+      {/* Status bar */}
       <div
         className="h-0.5"
         style={{
@@ -253,45 +573,46 @@ function ScheduleCard({
         }}
       />
 
-      <div className="p-4">
+      <div className="p-3.5 sm:p-4">
         {/* Row 1: Title + Amount */}
-        <div className="flex items-start justify-between gap-3 mb-3">
-          <div className="flex items-start gap-3 min-w-0">
-            {/* Type icon */}
+        <div className="flex items-start justify-between gap-2 sm:gap-3 mb-3">
+          <div className="flex items-start gap-2.5 sm:gap-3 min-w-0">
             <div
               className={cn(
-                "mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition",
+                "mt-0.5 flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl border transition",
                 job.job_type === "transaction"
                   ? "bg-blue-500/5 border-blue-500/20"
                   : "bg-gold-400/5 border-gold-400/20",
               )}
             >
               {job.job_type === "transaction" ? (
-                <ArrowLeftRight size={16} className="text-blue-400" />
+                <ArrowLeftRight size={15} className="text-blue-400" />
               ) : (
-                <TrendingUp size={16} className="text-gold-400" />
+                <TrendingUp size={15} className="text-gold-400" />
               )}
             </div>
 
             <div className="min-w-0">
-              <div className="text-[13px] font-semibold text-(--foreground) truncate mb-1">
+              <div className="text-xs sm:text-[13px] font-semibold text-(--foreground) truncate mb-1">
                 {job.description}
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
-                {/* Status badge with dot */}
                 <span
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold",
+                    "inline-flex items-center gap-1.5 rounded-full border px-2 sm:px-2.5 py-0.5 text-[10px] font-semibold",
                     statusStyle.bg,
                     statusStyle.text,
                     statusStyle.border,
                   )}
                 >
-                  <span className={cn("h-1.5 w-1.5 rounded-full", statusStyle.dot)} />
+                  <span
+                    className={cn(
+                      "h-1.5 w-1.5 rounded-full",
+                      statusStyle.dot,
+                    )}
+                  />
                   {statusStyle.label}
                 </span>
-
-                {/* Schedule Type */}
                 <span className="inline-flex items-center gap-1 rounded-full border border-(--border) bg-(--secondary)/30 px-2 py-0.5 text-[10px] font-medium text-(--muted-foreground)">
                   {job.schedule_type === "repeat" ? (
                     <Repeat size={9} />
@@ -304,58 +625,68 @@ function ScheduleCard({
             </div>
           </div>
 
-          {/* Amount */}
           <div className="text-right shrink-0">
-            <div className="font-mono text-sm font-bold text-(--foreground)">
+            <div className="font-mono text-xs sm:text-sm font-bold text-(--foreground)">
               {fmtShortCurrency(job.amount)}
             </div>
             <div className="text-[10px] text-(--muted-foreground)">
-              {job.repeat_interval ? `/${job.repeat_interval.slice(0, 2)}` : "once"}
+              {job.repeat_interval
+                ? `/${job.repeat_interval.slice(0, 2)}`
+                : "once"}
             </div>
           </div>
         </div>
 
-        {/* Row 2: Details grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3 ml-0 sm:ml-[52px]">
+        {/* Row 2: Detail pills */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 mb-3 sm:ml-[48px]">
           {job.repeat_detail && (
-            <div className="flex items-center gap-1.5 rounded-lg bg-(--secondary)/30 px-2.5 py-1.5">
-              <Timer size={11} className="shrink-0 text-(--muted-foreground)" />
-              <span className="text-[11px] text-(--foreground) truncate">
+            <div className="flex items-center gap-1.5 rounded-lg bg-(--secondary)/30 px-2 sm:px-2.5 py-1.5">
+              <Timer
+                size={11}
+                className="shrink-0 text-(--muted-foreground)"
+              />
+              <span className="text-[10px] sm:text-[11px] text-(--foreground) truncate">
                 {job.repeat_detail}
               </span>
             </div>
           )}
-
           {(job.category_name || job.asset_code) && (
-            <div className="flex items-center gap-1.5 rounded-lg bg-(--secondary)/30 px-2.5 py-1.5">
-              <Tag size={11} className="shrink-0 text-(--muted-foreground)" />
-              <span className="text-[11px] text-(--foreground) truncate">
+            <div className="flex items-center gap-1.5 rounded-lg bg-(--secondary)/30 px-2 sm:px-2.5 py-1.5">
+              <Tag
+                size={11}
+                className="shrink-0 text-(--muted-foreground)"
+              />
+              <span className="text-[10px] sm:text-[11px] text-(--foreground) truncate">
                 {job.category_name || job.asset_code}
               </span>
             </div>
           )}
-
           {job.wallet_name && (
-            <div className="flex items-center gap-1.5 rounded-lg bg-(--secondary)/30 px-2.5 py-1.5">
-              <Wallet size={11} className="shrink-0 text-(--muted-foreground)" />
-              <span className="text-[11px] text-(--foreground) truncate">
+            <div className="flex items-center gap-1.5 rounded-lg bg-(--secondary)/30 px-2 sm:px-2.5 py-1.5">
+              <Wallet
+                size={11}
+                className="shrink-0 text-(--muted-foreground)"
+              />
+              <span className="text-[10px] sm:text-[11px] text-(--foreground) truncate">
                 {job.wallet_name}
               </span>
             </div>
           )}
-
-          <div className="flex items-center gap-1.5 rounded-lg bg-(--secondary)/30 px-2.5 py-1.5">
-            <Calendar size={11} className="shrink-0 text-(--muted-foreground)" />
-            <span className="text-[11px] text-(--foreground) truncate">
+          <div className="flex items-center gap-1.5 rounded-lg bg-(--secondary)/30 px-2 sm:px-2.5 py-1.5">
+            <Calendar
+              size={11}
+              className="shrink-0 text-(--muted-foreground)"
+            />
+            <span className="text-[10px] sm:text-[11px] text-(--foreground) truncate">
               {job.end_date ? fmtDate(job.end_date) : "Forever"}
             </span>
           </div>
         </div>
 
-        {/* Row 3: Next/Last execution + stats */}
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-3 ml-0 sm:ml-[52px]">
+        {/* Row 3: Execution info */}
+        <div className="flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-1 mb-3 sm:ml-[48px]">
           {job.next_execution && (
-            <div className="text-[11px]">
+            <div className="text-[10px] sm:text-[11px]">
               <span className="text-(--muted-foreground)">Next → </span>
               <span className="font-medium text-gold-400">
                 {fmtDate(job.next_execution)}
@@ -363,7 +694,7 @@ function ScheduleCard({
             </div>
           )}
           {job.last_execution && (
-            <div className="text-[11px]">
+            <div className="text-[10px] sm:text-[11px]">
               <span className="text-(--muted-foreground)">Last → </span>
               <span className="font-medium text-(--foreground)">
                 {fmtDate(job.last_execution)}
@@ -371,7 +702,7 @@ function ScheduleCard({
             </div>
           )}
           {job.execution_logs.length > 0 && (
-            <div className="flex items-center gap-2 text-[11px]">
+            <div className="flex items-center gap-2 text-[10px] sm:text-[11px]">
               <span className="flex items-center gap-1 text-emerald-500">
                 <CheckCircle2 size={10} /> {successCount}
               </span>
@@ -384,30 +715,46 @@ function ScheduleCard({
           )}
         </div>
 
-        {/* Row 4: Actions & Expand */}
-        <div className="flex items-center justify-between ml-0 sm:ml-[52px]">
-          <div className="flex gap-2">
+        {/* Row 4: Actions */}
+        <div className="flex items-center justify-between sm:ml-[48px]">
+          <div className="flex gap-1.5">
             {job.status === "active" && (
               <button
-                onClick={() => onOpenModal(`Pause: ${job.description}`)}
-                className="flex items-center gap-1 rounded-lg border border-(--border) px-2.5 py-1 text-[10px] font-medium text-(--muted-foreground) transition hover:text-(--foreground) hover:border-(--ring)"
+                onClick={() =>
+                  onOpenModal({
+                    type: "pause",
+                    name: job.description,
+                  })
+                }
+                className="flex items-center gap-1 rounded-lg border border-(--border) px-2 sm:px-2.5 py-1 text-[10px] font-medium text-(--muted-foreground) transition hover:text-(--foreground) hover:border-(--ring)"
               >
                 <Pause size={10} /> Pause
               </button>
             )}
             {job.status === "paused" && (
               <button
-                onClick={() => onOpenModal(`Resume: ${job.description}`)}
-                className="flex items-center gap-1 rounded-lg border border-emerald-500/30 px-2.5 py-1 text-[10px] font-medium text-emerald-400 transition hover:bg-emerald-500/10"
+                onClick={() =>
+                  onOpenModal({
+                    type: "resume",
+                    name: job.description,
+                  })
+                }
+                className="flex items-center gap-1 rounded-lg border border-emerald-500/30 px-2 sm:px-2.5 py-1 text-[10px] font-medium text-emerald-400 transition hover:bg-emerald-500/10"
               >
                 <Play size={10} /> Resume
               </button>
             )}
             <button
-              onClick={() => onOpenModal(`Delete: ${job.description}`)}
-              className="flex items-center gap-1 rounded-lg border border-rose-500/30 px-2.5 py-1 text-[10px] font-medium text-rose-400/80 transition hover:text-rose-400 hover:bg-rose-500/10"
+              onClick={() =>
+                onOpenModal({
+                  type: "delete",
+                  name: job.description,
+                })
+              }
+              className="flex items-center gap-1 rounded-lg border border-rose-500/30 px-2 sm:px-2.5 py-1 text-[10px] font-medium text-rose-400/80 transition hover:text-rose-400 hover:bg-rose-500/10"
             >
-              <Trash2 size={10} /> Delete
+              <Trash2 size={10} />
+              <span className="hidden sm:inline">Delete</span>
             </button>
           </div>
 
@@ -422,15 +769,16 @@ function ScheduleCard({
               </>
             ) : (
               <>
-                Logs ({job.execution_logs.length}) <ChevronDown size={11} />
+                Logs ({job.execution_logs.length}){" "}
+                <ChevronDown size={11} />
               </>
             )}
           </button>
         </div>
 
-        {/* Expanded: Execution Logs */}
+        {/* Expanded logs */}
         {expanded && (
-          <div className="mt-3 ml-0 sm:ml-[52px]">
+          <div className="mt-3 sm:ml-[48px]">
             <ExecutionLogTable logs={job.execution_logs} />
           </div>
         )}
@@ -440,20 +788,35 @@ function ScheduleCard({
 }
 
 // ════════════════════════════════════════════
+// MODAL STATE
+// ════════════════════════════════════════════
+
+type ModalState =
+  | { type: "none" }
+  | { type: "create" }
+  | { type: "pause"; name: string }
+  | { type: "resume"; name: string }
+  | { type: "delete"; name: string };
+
+// ════════════════════════════════════════════
 // MAIN PAGE
 // ════════════════════════════════════════════
 
 export function ScheduledPage() {
   const { theme, toggleTheme } = useTheme();
 
-  // Filter
   const [statusFilter, setStatusFilter] = useState<
     "all" | "active" | "paused" | "completed"
   >("all");
 
-  // Demo modal
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalTitle, setModalTitle] = useState("");
+  const [modal, setModal] = useState<ModalState>({ type: "none" });
+
+  // Simulate loading
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 800);
+    return () => clearTimeout(t);
+  }, []);
 
   const allJobs = useMemo(() => getDummyScheduledJobs(), []);
 
@@ -485,19 +848,60 @@ export function ScheduledPage() {
       return s;
     }, 0);
 
-  const openDemoModal = (title: string) => {
-    setModalTitle(title);
-    setModalOpen(true);
-  };
+  const closeModal = () => setModal({ type: "none" });
 
   return (
     <MainLayout>
-      {/* Demo Modal */}
-      <DemoModal
-        open={modalOpen}
-        title={modalTitle}
-        onClose={() => setModalOpen(false)}
-      />
+      {/* ════════ MODALS ════════ */}
+      <Modal
+        open={modal.type === "create"}
+        title="Create Schedule"
+        onClose={closeModal}
+      >
+        <CreateScheduleForm onClose={closeModal} />
+      </Modal>
+
+      <Modal
+        open={modal.type === "pause"}
+        title="Pause Schedule"
+        onClose={closeModal}
+        maxWidth="max-w-sm"
+      >
+        <ConfirmDialog
+          message={`Pause "${modal.type === "pause" ? modal.name : ""}"? It will stop executing until resumed.`}
+          confirmLabel="Pause"
+          variant="warning"
+          onClose={closeModal}
+        />
+      </Modal>
+
+      <Modal
+        open={modal.type === "resume"}
+        title="Resume Schedule"
+        onClose={closeModal}
+        maxWidth="max-w-sm"
+      >
+        <ConfirmDialog
+          message={`Resume "${modal.type === "resume" ? modal.name : ""}"? It will start executing again based on its schedule.`}
+          confirmLabel="Resume"
+          variant="info"
+          onClose={closeModal}
+        />
+      </Modal>
+
+      <Modal
+        open={modal.type === "delete"}
+        title="Delete Schedule"
+        onClose={closeModal}
+        maxWidth="max-w-sm"
+      >
+        <ConfirmDialog
+          message={`Are you sure you want to delete "${modal.type === "delete" ? modal.name : ""}"? This action cannot be undone.`}
+          confirmLabel="Delete"
+          variant="danger"
+          onClose={closeModal}
+        />
+      </Modal>
 
       {/* ════════ HEADER ════════ */}
       <header className="sticky top-0 z-40 flex flex-col gap-3 border-b border-(--border) bg-(--card) px-4 py-3 sm:px-6 sm:py-3.5 md:flex-row md:items-center md:justify-between">
@@ -512,9 +916,6 @@ export function ScheduledPage() {
           </div>
           <button
             onClick={toggleTheme}
-            title={
-              theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"
-            }
             className="flex sm:hidden h-8 w-8 items-center justify-center rounded-lg border border-(--border) text-(--muted-foreground) transition hover:bg-(--muted) hover:text-(--foreground)"
           >
             {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
@@ -522,7 +923,6 @@ export function ScheduledPage() {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Status filter */}
           <div className="flex gap-1 overflow-x-auto">
             {(["all", "active", "paused", "completed"] as const).map(
               (status) => (
@@ -530,7 +930,7 @@ export function ScheduledPage() {
                   key={status}
                   onClick={() => setStatusFilter(status)}
                   className={cn(
-                    "whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold capitalize transition",
+                    "whitespace-nowrap rounded-lg border px-2 sm:px-2.5 py-1.5 text-[10px] sm:text-[11px] font-semibold capitalize transition",
                     statusFilter === status
                       ? "border-gold-400/40 bg-gold-400/10 text-gold-400"
                       : "border-(--border) text-(--muted-foreground) hover:text-(--foreground)",
@@ -541,12 +941,8 @@ export function ScheduledPage() {
               ),
             )}
           </div>
-
           <button
             onClick={toggleTheme}
-            title={
-              theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"
-            }
             className="hidden sm:flex h-8 w-8 items-center justify-center rounded-lg border border-(--border) text-(--muted-foreground) transition hover:bg-(--muted) hover:text-(--foreground)"
           >
             {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
@@ -556,110 +952,131 @@ export function ScheduledPage() {
 
       {/* ════════ CONTENT ════════ */}
       <main className="mx-auto flex max-w-350 flex-col gap-4 p-3 sm:p-5">
-        {/* ── KPI Cards (4 cards) ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-          <div className="relative flex flex-col gap-1 overflow-hidden rounded-xl border border-(--border) bg-(--card) px-4 py-3">
-            <div
-              className="absolute left-0 right-0 top-0 h-0.5 rounded-t-xl"
-              style={{ background: "linear-gradient(90deg, #10b981, #4ade80)" }}
-            />
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-(--muted-foreground)">
-              Active
-            </span>
-            <div className="flex items-end gap-1.5">
-              <span className="font-mono text-xl font-bold text-(--foreground)">
-                {totalActive}
-              </span>
-              {totalPaused > 0 && (
-                <span className="text-[10px] text-amber-500 mb-0.5">
-                  +{totalPaused} paused
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="relative flex flex-col gap-1 overflow-hidden rounded-xl border border-(--border) bg-(--card) px-4 py-3">
-            <div
-              className="absolute left-0 right-0 top-0 h-0.5 rounded-t-xl"
-              style={{ background: "linear-gradient(90deg, #daa520, #ffd700)" }}
-            />
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-(--muted-foreground)">
-              Next Run
-            </span>
-            <span className="font-mono text-sm font-bold text-gold-400">
-              {nextExec ? fmtDate(nextExec) : "—"}
-            </span>
-          </div>
-
-          <div className="relative flex flex-col gap-1 overflow-hidden rounded-xl border border-(--border) bg-(--card) px-4 py-3">
-            <div
-              className="absolute left-0 right-0 top-0 h-0.5 rounded-t-xl"
-              style={{ background: "linear-gradient(90deg, #3b82f6, #60a5fa)" }}
-            />
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-(--muted-foreground)">
-              Executed
-            </span>
-            <span className="font-mono text-xl font-bold text-(--foreground)">
-              {totalExecuted}
-            </span>
-          </div>
-
-          <div className="relative flex flex-col gap-1 overflow-hidden rounded-xl border border-(--border) bg-(--card) px-4 py-3">
-            <div
-              className="absolute left-0 right-0 top-0 h-0.5 rounded-t-xl"
-              style={{ background: "linear-gradient(90deg, #8b5cf6, #a78bfa)" }}
-            />
-            <span className="text-[9px] font-semibold uppercase tracking-widest text-(--muted-foreground)">
-              Monthly Auto
-            </span>
-            <span className="font-mono text-sm font-bold text-(--foreground)">
-              {fmtShortCurrency(totalMonthlyAmount)}
-            </span>
-          </div>
-        </div>
-
-        {/* ── Action Bar ── */}
-        <div className="flex items-center justify-between">
-          <div className="text-[13px] font-bold tracking-wide text-(--foreground)">
-            Scheduled Jobs
-            <span className="ml-2 text-[11px] font-normal text-(--muted-foreground)">
-              ({filteredJobs.length})
-            </span>
-          </div>
-          <button
-            onClick={() => openDemoModal("Create Schedule")}
-            className="flex items-center gap-1.5 rounded-lg border border-(--border) px-3 py-1.5 text-xs font-medium text-(--muted-foreground) transition hover:text-(--foreground) hover:border-(--ring)"
-          >
-            <Plus size={14} /> Create Schedule
-          </button>
-        </div>
-
-        {/* ── Schedule List ── */}
-        {filteredJobs.length === 0 ? (
-          <div className="rounded-xl border border-(--border) bg-(--card) px-6 py-12 text-center">
-            <CalendarClock
-              size={36}
-              className="mx-auto mb-3 text-(--muted-foreground) opacity-30"
-            />
-            <div className="text-sm font-semibold text-(--foreground) mb-1">
-              No scheduled jobs
-            </div>
-            <div className="text-xs text-(--muted-foreground)">
-              {statusFilter !== "all"
-                ? `No ${statusFilter} schedules found. Try a different filter.`
-                : "Create your first scheduled transaction or investment."}
-            </div>
-          </div>
+        {loading ? (
+          <ScheduledSkeleton />
         ) : (
-          <div className="flex flex-col gap-3">
-            {filteredJobs.map((job) => (
-              <ScheduleCard
-                key={job.id}
-                job={job}
-                onOpenModal={openDemoModal}
+          <>
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+              <div className="relative flex flex-col gap-1 overflow-hidden rounded-xl border border-(--border) bg-(--card) px-3 sm:px-4 py-3">
+                <div
+                  className="absolute left-0 right-0 top-0 h-0.5 rounded-t-xl"
+                  style={{
+                    background: "linear-gradient(90deg, #10b981, #4ade80)",
+                  }}
+                />
+                <span className="text-[9px] font-semibold uppercase tracking-widest text-(--muted-foreground)">
+                  Active
+                </span>
+                <div className="flex items-end gap-1.5">
+                  <span className="font-mono text-lg sm:text-xl font-bold text-(--foreground)">
+                    {totalActive}
+                  </span>
+                  {totalPaused > 0 && (
+                    <span className="text-[10px] text-amber-500 mb-0.5">
+                      +{totalPaused} paused
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="relative flex flex-col gap-1 overflow-hidden rounded-xl border border-(--border) bg-(--card) px-3 sm:px-4 py-3">
+                <div
+                  className="absolute left-0 right-0 top-0 h-0.5 rounded-t-xl"
+                  style={{
+                    background: "linear-gradient(90deg, #daa520, #ffd700)",
+                  }}
+                />
+                <span className="text-[9px] font-semibold uppercase tracking-widest text-(--muted-foreground)">
+                  Next Run
+                </span>
+                <span className="font-mono text-xs sm:text-sm font-bold text-gold-400">
+                  {nextExec ? fmtDate(nextExec) : "—"}
+                </span>
+              </div>
+
+              <div className="relative flex flex-col gap-1 overflow-hidden rounded-xl border border-(--border) bg-(--card) px-3 sm:px-4 py-3">
+                <div
+                  className="absolute left-0 right-0 top-0 h-0.5 rounded-t-xl"
+                  style={{
+                    background: "linear-gradient(90deg, #3b82f6, #60a5fa)",
+                  }}
+                />
+                <span className="text-[9px] font-semibold uppercase tracking-widest text-(--muted-foreground)">
+                  Executed
+                </span>
+                <span className="font-mono text-lg sm:text-xl font-bold text-(--foreground)">
+                  {totalExecuted}
+                </span>
+              </div>
+
+              <div className="relative flex flex-col gap-1 overflow-hidden rounded-xl border border-(--border) bg-(--card) px-3 sm:px-4 py-3">
+                <div
+                  className="absolute left-0 right-0 top-0 h-0.5 rounded-t-xl"
+                  style={{
+                    background: "linear-gradient(90deg, #8b5cf6, #a78bfa)",
+                  }}
+                />
+                <span className="text-[9px] font-semibold uppercase tracking-widest text-(--muted-foreground)">
+                  Monthly Auto
+                </span>
+                <span className="font-mono text-xs sm:text-sm font-bold text-(--foreground)">
+                  {fmtShortCurrency(totalMonthlyAmount)}
+                </span>
+              </div>
+            </div>
+
+            {/* Action Bar */}
+            <div className="flex items-center justify-between">
+              <div className="text-xs sm:text-[13px] font-bold tracking-wide text-(--foreground)">
+                Scheduled Jobs
+                <span className="ml-1.5 sm:ml-2 text-[10px] sm:text-[11px] font-normal text-(--muted-foreground)">
+                  ({filteredJobs.length})
+                </span>
+              </div>
+              <button
+                onClick={() => setModal({ type: "create" })}
+                className="flex items-center gap-1.5 rounded-lg border border-(--border) px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-medium text-(--muted-foreground) transition hover:text-(--foreground) hover:border-(--ring)"
+              >
+                <Plus size={14} /> <span className="hidden sm:inline">Create</span> Schedule
+              </button>
+            </div>
+
+            {/* Schedule List */}
+            {filteredJobs.length === 0 ? (
+              <EmptyState
+                illustration="empty"
+                title="No scheduled jobs"
+                description={
+                  statusFilter !== "all"
+                    ? `No ${statusFilter} schedules found. Try a different filter.`
+                    : "Create your first scheduled transaction or investment to automate your finances."
+                }
+                size="lg"
+                icon={<CalendarClock size={40} />}
+                action={
+                  statusFilter === "all" ? (
+                    <button
+                      onClick={() => setModal({ type: "create" })}
+                      className="flex items-center gap-1.5 rounded-lg bg-gold-btn px-4 py-2 text-xs font-semibold text-dark transition hover:opacity-90"
+                    >
+                      <Plus size={14} /> Create Schedule
+                    </button>
+                  ) : undefined
+                }
               />
-            ))}
-          </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {filteredJobs.map((job) => (
+                  <ScheduleCard
+                    key={job.id}
+                    job={job}
+                    onOpenModal={setModal}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </main>
     </MainLayout>
