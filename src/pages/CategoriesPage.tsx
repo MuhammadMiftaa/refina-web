@@ -5,10 +5,6 @@ import {
   ArrowDown,
   Sun,
   Moon,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   ArrowDownCircle,
   ArrowUpCircle,
 } from "lucide-react";
@@ -100,10 +96,6 @@ export function CategoriesPage() {
   const [sortBy, setSortBy] = useState("total_amount");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-  // Pagination
-  const [page, setPage] = useState(1);
-  const pageSize = 10;
-
   // Data
   const allCategories = useMemo(
     () => getDummyCategoryBreakdown(categoryTab),
@@ -127,10 +119,6 @@ export function CategoriesPage() {
     return data;
   }, [allCategories, sortBy, sortOrder]);
 
-  // Paginate
-  const totalPages = Math.ceil(sorted.length / pageSize);
-  const paginated = sorted.slice((page - 1) * pageSize, page * pageSize);
-
   // Summary
   const totalAmount = allCategories.reduce((s, c) => s + c.total_amount, 0);
   const totalTx = allCategories.reduce((s, c) => s + c.total_transactions, 0);
@@ -142,13 +130,11 @@ export function CategoriesPage() {
       setSortBy(field);
       setSortOrder("desc");
     }
-    setPage(1);
   };
 
-  // Reset page when tab changes
+  // Reset sort when tab changes
   const handleTabChange = (tab: "expense" | "income") => {
     setCategoryTab(tab);
-    setPage(1);
     setSortBy("total_amount");
     setSortOrder("desc");
   };
@@ -179,7 +165,7 @@ export function CategoriesPage() {
           </button>
         </div>
 
-        <div className="inline-grid grid-flow-col auto-cols-max grid-rows-2 sm:grid-rows-1 items-center gap-2 sm:gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <span className="mr-1 hidden text-[10px] uppercase tracking-widest text-(--muted-foreground) sm:inline">
             Filter
           </span>
@@ -187,7 +173,7 @@ export function CategoriesPage() {
           <select
             value={walletFilter}
             onChange={(e) => setWalletFilter(e.target.value)}
-            className="row-start-2 col-start-1 sm:col-start-2 sm:row-start-1 min-w-0 w-full flex-1 rounded-lg border border-(--border) bg-(--input) px-2.5 py-1.5 text-xs text-(--foreground) outline-none focus:border-(--ring) sm:flex-none"
+            className="min-w-0 w-full sm:w-auto rounded-lg border border-(--border) bg-(--input) px-2.5 py-1.5 text-xs text-(--foreground) outline-none focus:border-(--ring)"
           >
             <option value="">All Wallets</option>
             {DUMMY_DASHBOARD_WALLETS.map((w) => (
@@ -204,7 +190,7 @@ export function CategoriesPage() {
               onChange={(e) =>
                 setDateRange((p) => ({ ...p, start: e.target.value }))
               }
-              className="w-30 rounded-lg border border-(--border) bg-(--input) px-2 py-1.5 text-xs text-(--foreground) outline-none focus:border-(--ring) sm:w-auto sm:px-2.5"
+              className="w-[7.5rem] rounded-lg border border-(--border) bg-(--input) px-2 py-1.5 text-xs text-(--foreground) outline-none focus:border-(--ring) sm:w-auto sm:px-2.5"
             />
             <span className="text-xs text-(--muted-foreground)">→</span>
             <input
@@ -213,7 +199,7 @@ export function CategoriesPage() {
               onChange={(e) =>
                 setDateRange((p) => ({ ...p, end: e.target.value }))
               }
-              className="w-30 rounded-lg border border-(--border) bg-(--input) px-2 py-1.5 text-xs text-(--foreground) outline-none focus:border-(--ring) sm:w-auto sm:px-2.5"
+              className="w-[7.5rem] rounded-lg border border-(--border) bg-(--input) px-2 py-1.5 text-xs text-(--foreground) outline-none focus:border-(--ring) sm:w-auto sm:px-2.5"
             />
           </div>
 
@@ -309,7 +295,7 @@ export function CategoriesPage() {
                     Group
                   </span>
                 </th>
-                <th className="px-4 py-3 text-right">
+                <th className="px-4 py-3">
                   <SortHeader
                     label="Amount"
                     field="total_amount"
@@ -319,18 +305,18 @@ export function CategoriesPage() {
                     className="justify-end"
                   />
                 </th>
-                <th className="px-4 py-3 text-right">
+                <th className="px-4 py-3">
                   <SortHeader
                     label="Transactions"
                     field="total_transactions"
                     currentSort={sortBy}
                     currentOrder={sortOrder}
                     onSort={handleSort}
-                    className="justify-end"
+                    className="justify-center"
                   />
                 </th>
-                <th className="px-4 py-3 text-right">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-(--muted-foreground)">
+                <th className="px-4 py-3">
+                  <span className="flex justify-end text-[11px] font-semibold uppercase tracking-wider text-(--muted-foreground)">
                     Share
                   </span>
                 </th>
@@ -342,7 +328,7 @@ export function CategoriesPage() {
               </tr>
             </thead>
             <tbody>
-              {paginated.map((cat) => (
+              {sorted.map((cat) => (
                 <CategoryTableRow
                   key={cat.category_id}
                   category={cat}
@@ -356,7 +342,7 @@ export function CategoriesPage() {
 
         {/* ── Cards (Mobile) ── */}
         <div className="flex flex-col gap-2 md:hidden">
-          {paginated.map((cat) => (
+          {sorted.map((cat) => (
             <CategoryCard
               key={cat.category_id}
               category={cat}
@@ -365,49 +351,6 @@ export function CategoriesPage() {
             />
           ))}
         </div>
-
-        {/* ── Pagination ── */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between rounded-xl border border-(--border) bg-(--card) px-4 py-3">
-            <div className="text-[11px] text-(--muted-foreground)">
-              Showing {(page - 1) * pageSize + 1}–
-              {Math.min(page * pageSize, sorted.length)} of {sorted.length}
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setPage(1)}
-                disabled={page === 1}
-                className="rounded-lg p-1.5 text-(--muted-foreground) transition hover:text-(--foreground) disabled:opacity-30"
-              >
-                <ChevronsLeft size={14} />
-              </button>
-              <button
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="rounded-lg p-1.5 text-(--muted-foreground) transition hover:text-(--foreground) disabled:opacity-30"
-              >
-                <ChevronLeft size={14} />
-              </button>
-              <span className="px-3 text-xs font-medium text-(--foreground)">
-                {page} / {totalPages}
-              </span>
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="rounded-lg p-1.5 text-(--muted-foreground) transition hover:text-(--foreground) disabled:opacity-30"
-              >
-                <ChevronRight size={14} />
-              </button>
-              <button
-                onClick={() => setPage(totalPages)}
-                disabled={page === totalPages}
-                className="rounded-lg p-1.5 text-(--muted-foreground) transition hover:text-(--foreground) disabled:opacity-30"
-              >
-                <ChevronsRight size={14} />
-              </button>
-            </div>
-          </div>
-        )}
       </main>
     </MainLayout>
   );
@@ -441,25 +384,31 @@ function CategoryTableRow({
           {category.group_name}
         </span>
       </td>
-      <td className="px-4 py-3 text-right">
-        <span
-          className={cn(
-            "font-mono text-xs font-semibold",
-            type === "expense" ? "text-rose-500" : "text-emerald-500",
-          )}
-        >
-          {fmtCurrency(category.total_amount)}
-        </span>
+      <td className="px-4 py-3">
+        <div className="text-right">
+          <span
+            className={cn(
+              "font-mono text-xs font-semibold",
+              type === "expense" ? "text-rose-500" : "text-emerald-500",
+            )}
+          >
+            {fmtCurrency(category.total_amount)}
+          </span>
+        </div>
       </td>
-      <td className="px-4 py-3 text-right">
-        <span className="font-mono text-xs text-(--foreground)">
-          {category.total_transactions}x
-        </span>
+      <td className="px-4 py-3">
+        <div className="text-center">
+          <span className="font-mono text-xs text-(--foreground)">
+            {category.total_transactions}x
+          </span>
+        </div>
       </td>
-      <td className="px-4 py-3 text-right">
-        <span className="text-xs text-(--muted-foreground)">
-          {category.percentage.toFixed(1)}%
-        </span>
+      <td className="px-4 py-3">
+        <div className="text-right">
+          <span className="text-xs text-(--muted-foreground)">
+            {category.percentage.toFixed(1)}%
+          </span>
+        </div>
       </td>
       <td className="px-4 py-3">
         <div className="h-1.5 overflow-hidden rounded-full bg-(--muted)">
