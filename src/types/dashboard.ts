@@ -145,3 +145,15 @@ export interface NetWorthComposition {
   total: number;
   slices: NetWorthSlice[];
 }
+
+// ── Category Breakdown (Money Flow) ──
+
+export interface CategoryBreakdownItem {
+  category_id: string;
+  category_name: string;
+  category_type: "income" | "expense";
+  group_name: string;
+  total_amount: number;
+  total_transactions: number;
+  percentage: number;
+}

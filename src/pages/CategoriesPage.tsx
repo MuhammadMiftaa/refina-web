@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import {
   ArrowUpDown,
   ArrowUp,
@@ -14,11 +14,9 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
-import {
-  getDummyCategoryBreakdown,
-  DUMMY_DASHBOARD_WALLETS,
-  type CategoryBreakdownItem,
-} from "@/lib/dummy-data";
+import { useCategories, type CategoriesFilter } from "@/hooks/useCategories";
+import { useWallets } from "@/hooks/useDashboard";
+import type { CategoryBreakdownItem } from "@/types/dashboard";
 
 // ════════════════════════════════════════════
 // HELPERS
@@ -126,13 +124,6 @@ function SortHeader({
 export function CategoriesPage() {
   const { theme, toggleTheme } = useTheme();
 
-  // Simulate loading
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 800);
-    return () => clearTimeout(t);
-  }, []);
-
   // Filters
   const [categoryTab, setCategoryTab] = useState<"expense" | "income">(
     "expense",
@@ -140,36 +131,53 @@ export function CategoriesPage() {
   const [walletFilter, setWalletFilter] = useState("");
   const [dateRange, setDateRange] = useState({ start: "", end: "" });
 
+  // Build filter object for hook
+  const filter: CategoriesFilter = useMemo(
+    () => ({
+      walletID: walletFilter,
+      range: dateRange.start && dateRange.end ? dateRange : undefined,
+    }),
+    [walletFilter, dateRange],
+  );
+
+  // Fetch wallets for dropdown
+  const { data: wallets } = useWallets();
+
+  // Fetch categories data
+  const {
+    data: allCategories,
+    loading,
+    error,
+  } = useCategories(filter, categoryTab);
+
   // Sorting
   const [sortBy, setSortBy] = useState("total_amount");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-  // Data
-  const allCategories = useMemo(
-    () => getDummyCategoryBreakdown(categoryTab),
-    [categoryTab],
-  );
-
   // Sort
   const sorted = useMemo(() => {
+    if (!allCategories) return [];
     const data = [...allCategories];
     data.sort((a, b) => {
       const aVal =
-        sortBy === "total_transactions"
-          ? a.total_transactions
-          : a.total_amount;
+        sortBy === "total_transactions" ? a.total_transactions : a.total_amount;
       const bVal =
-        sortBy === "total_transactions"
-          ? b.total_transactions
-          : b.total_amount;
+        sortBy === "total_transactions" ? b.total_transactions : b.total_amount;
       return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
     });
     return data;
   }, [allCategories, sortBy, sortOrder]);
 
   // Summary
-  const totalAmount = allCategories.reduce((s, c) => s + c.total_amount, 0);
-  const totalTx = allCategories.reduce((s, c) => s + c.total_transactions, 0);
+  const totalAmount = (allCategories ?? []).reduce(
+    (s, c) => s + c.total_amount,
+    0,
+  );
+  const totalTx = (allCategories ?? []).reduce(
+    (s, c) => s + c.total_transactions,
+    0,
+  );
+  const categoryCount = (allCategories ?? []).length;
 
   const handleSort = (field: string) => {
     if (sortBy === field) {
@@ -216,7 +224,7 @@ export function CategoriesPage() {
             className="min-w-0 w-full sm:w-auto rounded-lg border border-(--border) bg-(--input) px-2.5 py-1.5 text-xs text-(--foreground) outline-none focus:border-(--ring)"
           >
             <option value="">All Wallets</option>
-            {DUMMY_DASHBOARD_WALLETS.map((w) => (
+            {(wallets ?? []).map((w) => (
               <option key={w.wallet_id} value={w.wallet_id}>
                 {w.wallet_name}
               </option>
@@ -256,6 +264,14 @@ export function CategoriesPage() {
       <main className="mx-auto flex max-w-350 flex-col gap-4 p-3 sm:p-5">
         {loading ? (
           <CategoriesSkeleton />
+        ) : error ? (
+          <EmptyState
+            illustration="empty"
+            title="Failed to load categories"
+            description={error}
+            size="lg"
+            icon={<PieChart size={40} />}
+          />
         ) : sorted.length === 0 ? (
           <EmptyState
             illustration="chart"
@@ -288,7 +304,9 @@ export function CategoriesPage() {
                       <ArrowDownCircle size={14} />
                     )}
                     <span className="hidden sm:inline">{t}</span>
-                    <span className="sm:hidden">{t.charAt(0).toUpperCase() + t.slice(1, 3)}.</span>
+                    <span className="sm:hidden">
+                      {t.charAt(0).toUpperCase() + t.slice(1, 3)}.
+                    </span>
                   </button>
                 ))}
               </div>
@@ -314,7 +332,7 @@ export function CategoriesPage() {
                     Cat.
                   </div>
                   <div className="font-mono text-xs sm:text-sm font-bold text-(--foreground)">
-                    {allCategories.length}
+                    {categoryCount}
                   </div>
                 </div>
                 <div className="text-right">
@@ -380,9 +398,7 @@ export function CategoriesPage() {
                     const barColor =
                       categoryTab === "expense" ? "#f43f5e" : "#10b981";
                     const pct =
-                      maxAmount > 0
-                        ? (cat.total_amount / maxAmount) * 100
-                        : 0;
+                      maxAmount > 0 ? (cat.total_amount / maxAmount) * 100 : 0;
                     return (
                       <tr
                         key={cat.category_id}
