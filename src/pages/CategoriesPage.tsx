@@ -136,6 +136,7 @@ export function CategoriesPage() {
     "expense",
   );
   const [walletFilter, setWalletFilter] = useState("");
+  const [groupFilter, setGroupFilter] = useState("");
   const [dateRange, setDateRange] = useState({ start: "", end: "" });
 
   // Modal state for transaction list
@@ -203,7 +204,13 @@ export function CategoriesPage() {
   // Sort
   const sorted = useMemo(() => {
     if (!allCategories) return [];
-    const data = [...allCategories];
+    let data = [...allCategories];
+
+    // Client-side filter by group if selected
+    if (groupFilter) {
+      data = data.filter((cat) => cat.group_name === groupFilter);
+    }
+
     data.sort((a, b) => {
       const aVal =
         sortBy === "total_transactions" ? a.total_transactions : a.total_amount;
@@ -212,18 +219,22 @@ export function CategoriesPage() {
       return sortOrder === "asc" ? aVal - bVal : bVal - aVal;
     });
     return data;
-  }, [allCategories, sortBy, sortOrder]);
+  }, [allCategories, sortBy, sortOrder, groupFilter]);
 
-  // Summary
-  const totalAmount = (allCategories ?? []).reduce(
-    (s, c) => s + c.total_amount,
-    0,
-  );
-  const totalTx = (allCategories ?? []).reduce(
-    (s, c) => s + c.total_transactions,
-    0,
-  );
-  const categoryCount = (allCategories ?? []).length;
+  // Extract unique group names for filter dropdown
+  const availableGroups = useMemo(() => {
+    if (!allCategories) return [];
+    const groups = new Set<string>();
+    allCategories.forEach((cat) => {
+      if (cat.group_name) groups.add(cat.group_name);
+    });
+    return Array.from(groups).sort((a, b) => a.localeCompare(b));
+  }, [allCategories]);
+
+  // Summary - calculated from filtered/sorted data
+  const totalAmount = sorted.reduce((s, c) => s + c.total_amount, 0);
+  const totalTx = sorted.reduce((s, c) => s + c.total_transactions, 0);
+  const categoryCount = sorted.length;
 
   const handleSort = (field: string) => {
     if (sortBy === field) {
@@ -236,6 +247,7 @@ export function CategoriesPage() {
 
   const handleTabChange = (tab: "expense" | "income") => {
     setCategoryTab(tab);
+    setGroupFilter(""); // Reset group filter when switching tabs
     setSortBy("total_amount");
     setSortOrder("desc");
   };
@@ -282,6 +294,19 @@ export function CategoriesPage() {
             {(wallets ?? []).map((w) => (
               <option key={w.wallet_id} value={w.wallet_id}>
                 {w.wallet_name}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={groupFilter}
+            onChange={(e) => setGroupFilter(e.target.value)}
+            className="min-w-0 w-full sm:w-auto rounded-lg border border-(--border) bg-(--input) px-2.5 py-1.5 text-xs text-(--foreground) outline-none focus:border-(--ring)"
+          >
+            <option value="">All Groups</option>
+            {availableGroups.map((group) => (
+              <option key={group} value={group}>
+                {group}
               </option>
             ))}
           </select>
@@ -347,7 +372,7 @@ export function CategoriesPage() {
         ) : (
           <>
             {/* Toggle + Summary */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-row sm:flex-row sm:items-center justify-between">
               <div className="flex gap-1">
                 {(["expense", "income"] as const).map((t) => (
                   <button
@@ -474,7 +499,7 @@ export function CategoriesPage() {
                         </td>
                         <td className="px-4 py-3">
                           <span className="rounded-md border border-(--border) bg-(--secondary)/30 px-2 py-0.5 text-[10px] font-medium text-(--muted-foreground)">
-                            {cat.group_name}
+                            {cat.group_name || "-"}
                           </span>
                         </td>
                         <td className="px-4 py-3">

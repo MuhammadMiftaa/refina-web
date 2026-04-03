@@ -2,8 +2,10 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDemo } from "@/contexts/DemoContext";
 import { fetchUserTransactions } from "@/lib/dashboard-api";
+import { fetchCategories } from "@/lib/wallet-transaction-api";
 import { getDummyCategoryBreakdown } from "@/lib/dummy-data";
 import type { CategoryBreakdownItem, DateRange } from "@/types/dashboard";
+import type { CategoryGroup } from "@/types/transaction";
 
 // ── Generic async state ──
 
@@ -23,6 +25,7 @@ export interface CategoriesFilter {
 // ── Categories Hook ──
 // Fetches all transaction categories and computes percentage for each category
 // based on the total amount within the selected category type (income/expense).
+// Also fetches category metadata from /categories endpoint to get group_name.
 
 export function useCategories(
   filter: CategoriesFilter,
@@ -59,15 +62,32 @@ export function useCategories(
       ? { range: filter.range }
       : ({} as { range?: DateRange });
 
-    fetchUserTransactions(token, {
-      walletID: filter.walletID || undefined,
-      dateOption,
-    })
-      .then((res) => {
+    // Fetch both transaction data and category metadata in parallel
+    Promise.all([
+      fetchUserTransactions(token, {
+        walletID: filter.walletID || undefined,
+        dateOption,
+      }),
+      fetchCategories(token),
+    ])
+      .then(([transactionsRes, categoriesRes]) => {
         if (id !== fetchRef.current) return;
 
+        // Build a map of category_id -> group_name from categories endpoint
+        // API returns CategoryGroup[] structure
+        const categoryGroupMap = new Map<string, string>();
+        const groups = categoriesRes.data as unknown as CategoryGroup[];
+        if (Array.isArray(groups)) {
+          for (const group of groups) {
+            if (!group.categories) continue;
+            for (const cat of group.categories) {
+              categoryGroupMap.set(cat.id, group.group_name);
+            }
+          }
+        }
+
         // Client-side filter by category type (exclude fund_transfer)
-        const filtered = (res.data ?? []).filter(
+        const filtered = (transactionsRes.data ?? []).filter(
           (t) => t.category_type === categoryType,
         );
 
@@ -77,12 +97,12 @@ export function useCategories(
           0,
         );
 
-        // Map to CategoryBreakdownItem with percentage
+        // Map to CategoryBreakdownItem with percentage and merged group_name
         const categories: CategoryBreakdownItem[] = filtered.map((t) => ({
           category_id: t.category_id,
           category_name: t.category_name,
           category_type: categoryType,
-          group_name: t.parent_category_name ?? "",
+          group_name: categoryGroupMap.get(t.category_id) ?? "",
           total_amount: t.total_amount,
           total_transactions: t.total_transactions,
           percentage:
