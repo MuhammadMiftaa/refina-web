@@ -9,14 +9,18 @@ import {
   X,
   Target,
   Pencil,
-  RefreshCw,
+  RefreshCw as Refresh,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useDemo } from "@/contexts/DemoContext";
+import { refreshCache } from "@/lib/cache-api";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { Input } from "@/components/ui/FormElements";
 import { useBudgetList, useBudgetMutations } from "@/hooks/useBudget";
 import { useWalletList } from "@/hooks/useWallet";
 import { useCategories } from "@/hooks/useTransaction";
@@ -241,65 +245,58 @@ function SetBudgetForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      {!categoryName && (
-        <div className="space-y-1.5">
-          <label className="block text-xs font-medium text-(--foreground) opacity-80">
-            Scope
-          </label>
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="w-full rounded-lg border border-(--border) bg-(--input) px-3 py-2 text-xs text-(--foreground) outline-none focus:border-(--ring)"
-          >
-            <option value="">Overall Budget</option>
-            {expenseCategories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
+      {!categoryName && !editBudget && (
+        <SearchableSelect
+          label="Budget Scope"
+          value={selectedCategory}
+          onChange={setSelectedCategory}
+          options={[
+            { value: "", label: "Overall Budget (All Categories)" },
+            ...expenseCategories.map((c) => ({
+              value: c.id,
+              label: c.name,
+              group: c.group_name,
+            })),
+          ]}
+          placeholder="Select budget scope..."
+          searchPlaceholder="Search category..."
+          grouped
+        />
       )}
-      <div className="space-y-1.5">
-        <label className="block text-xs font-medium text-(--foreground) opacity-80">
-          Wallet Scope
-        </label>
-        <select
-          value={selectedWallet}
-          onChange={(e) => setSelectedWallet(e.target.value)}
-          className="w-full rounded-lg border border-(--border) bg-(--input) px-3 py-2 text-xs text-(--foreground) outline-none focus:border-(--ring)"
-        >
-          <option value="">All Wallets</option>
-          {wallets?.map((w) => (
-            <option key={w.id} value={w.id}>
-              {w.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="space-y-1.5">
-        <label className="block text-xs font-medium text-(--foreground) opacity-80">
-          Monthly Limit (IDR)
-        </label>
-        <input
-          type="number"
-          placeholder="e.g. 5000000"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          className="w-full rounded-lg border border-(--border) bg-(--input) px-3 py-2 text-xs text-(--foreground) outline-none focus:border-(--ring)"
-        />
-      </div>
-      <div className="space-y-1.5">
-        <label className="block text-xs font-medium text-(--foreground) opacity-80">
-          Period
-        </label>
-        <input
-          type="month"
-          value={period}
-          onChange={(e) => setPeriod(e.target.value)}
-          className="w-full rounded-lg border border-(--border) bg-(--input) px-3 py-2 text-xs text-(--foreground) outline-none focus:border-(--ring)"
-        />
-      </div>
+
+      <SearchableSelect
+        label="Wallet Scope"
+        value={selectedWallet}
+        onChange={setSelectedWallet}
+        options={[
+          { value: "", label: "All Wallets" },
+          ...(wallets?.map((w) => ({
+            value: w.id,
+            label: w.name,
+            group: w.wallet_type_detail?.type,
+          })) || []),
+        ]}
+        placeholder="Select wallet scope..."
+        searchPlaceholder="Search wallet..."
+        grouped
+      />
+
+      <Input
+        label="Monthly Limit (IDR)"
+        type="number"
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
+        placeholder="e.g. 5000000"
+        min="1"
+      />
+
+      <Input
+        label="Period"
+        type="month"
+        value={period}
+        onChange={(e) => setPeriod(e.target.value)}
+      />
+
       <div className="flex gap-2 pt-1">
         <button
           type="button"
@@ -313,7 +310,11 @@ function SetBudgetForm({
           disabled={isLoading}
           className="flex-1 rounded-lg bg-gold-btn px-3 py-2 text-xs font-semibold text-dark transition hover:opacity-90 disabled:opacity-50"
         >
-          {isLoading ? "Saving..." : "Save Budget"}
+          {isLoading
+            ? "Saving..."
+            : editBudget
+              ? "Update Budget"
+              : "Save Budget"}
         </button>
       </div>
     </form>
@@ -544,9 +545,9 @@ function BudgetCategoryCard({
 }) {
   const spent = budget.current_spent;
   const limit = budget.monthly_limit;
-  const remaining = limit - spent;
+  const remaining = limit - (spent || 0);
   const overBudget = spent > limit;
-  const pct = (spent / limit) * 100;
+  const pct = ((spent || 0) / limit) * 100;
 
   return (
     <div
@@ -588,9 +589,9 @@ function BudgetCategoryCard({
               overBudget ? "text-rose-500" : "text-(--foreground)",
             )}
           >
-            {fmtShort(spent)}
+            {fmtShort(spent || 0)}
           </span>{" "}
-          / {fmtShort(limit)}
+          / {fmtShort(limit || 0)}
         </div>
         <div className="flex items-center gap-2">
           <span
@@ -651,11 +652,11 @@ type ModalState =
 
 export function BudgetPage() {
   const { theme, toggleTheme } = useTheme();
+  const { token } = useAuth();
   const [selectedPeriod, setSelectedPeriod] = useState(
     new Date().toISOString().slice(0, 7),
   );
   const [modal, setModal] = useState<ModalState>({ type: "none" });
-  const [refreshing, setRefreshing] = useState(false);
 
   // Use budget hook instead of dummy data
   const {
@@ -663,7 +664,6 @@ export function BudgetPage() {
     loading,
     error,
     refetch,
-    refresh,
   } = useBudgetList(selectedPeriod);
 
   const {
@@ -687,13 +687,6 @@ export function BudgetPage() {
   );
 
   const closeModal = () => setModal({ type: "none" });
-
-  // Handle refresh
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await refresh();
-    setRefreshing(false);
-  };
 
   // Handle form submit
   const handleSetBudgetSubmit = async (data: {
@@ -813,12 +806,23 @@ export function BudgetPage() {
           />
           {/* Refresh Button */}
           <button
-            onClick={handleRefresh}
-            disabled={refreshing || loading}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-(--border) text-(--muted-foreground) transition hover:bg-(--muted) hover:text-(--foreground) disabled:opacity-50"
-            title="Refresh data"
+            onClick={async () => {
+              const tid = toast.loading("Refreshing budget cache...");
+              try {
+                await refreshCache("budget", token ?? undefined);
+                refetch();
+                toast.dismiss(tid);
+                toast.success("Budget refreshed");
+              } catch (err: any) {
+                toast.dismiss(tid);
+                toast.error(err?.message || "Failed to refresh cache");
+              }
+            }}
+            title="Refresh"
+            className="flex h-8 items-center justify-center gap-1.5 rounded-lg border border-(--border) px-2 text-(--muted-foreground) transition hover:bg-(--muted) hover:text-(--foreground)"
           >
-            <RefreshCw size={14} className={refreshing ? "animate-spin" : ""} />
+            <Refresh size={14} />
+            <span className="hidden sm:inline text-xs">Refresh</span>
           </button>
           <button
             onClick={toggleTheme}
@@ -844,7 +848,7 @@ export function BudgetPage() {
                 onClick={() => refetch()}
                 className="flex items-center gap-1.5 rounded-lg bg-gold-btn px-4 py-2 text-xs font-semibold text-dark transition hover:opacity-90"
               >
-                <RefreshCw size={14} /> Try Again
+                <Refresh size={14} /> Try Again
               </button>
             }
           />
@@ -931,11 +935,11 @@ export function BudgetPage() {
                             : "text-(--foreground)",
                         )}
                       >
-                        {fmtCurrency(overallBudget.current_spent)}
+                        {fmtCurrency(overallBudget.current_spent || 0)}
                       </div>
                     </div>
                     <div className="text-[11px] text-(--muted-foreground) pb-0.5 sm:pb-1">
-                      of {fmtCurrency(overallBudget.monthly_limit)}
+                      of {fmtCurrency(overallBudget.monthly_limit || 0)}
                     </div>
                     <div className="ml-auto text-right pb-0.5 sm:pb-1">
                       <span
@@ -953,8 +957,7 @@ export function BudgetPage() {
                       >
                         {(
                           (overallBudget.current_spent /
-                            overallBudget.monthly_limit) *
-                          100
+                            overallBudget.monthly_limit || 0) * 100
                         ).toFixed(0)}
                         %
                       </span>
@@ -976,11 +979,12 @@ export function BudgetPage() {
                         Math.max(
                           0,
                           overallBudget.monthly_limit -
-                            overallBudget.current_spent,
+                            (overallBudget.current_spent || 0),
                         ),
                       )}{" "}
                       remaining
                     </span>
+                    {/* {overallBudget.current_spent && ( */}
                     <span className="text-[10px] sm:text-[11px] text-(--muted-foreground)">
                       ~
                       {fmtShort(
@@ -988,13 +992,14 @@ export function BudgetPage() {
                           0,
                           Math.round(
                             (overallBudget.monthly_limit -
-                              overallBudget.current_spent) /
+                              (overallBudget.current_spent || 0)) /
                               30,
                           ),
                         ),
                       )}
                       /day left
                     </span>
+                    {/* )} */}
                   </div>
                 </div>
 
